@@ -1,0 +1,59 @@
+spring.application.name=healthcare
+server.port=8080
+
+# default profile
+spring.profiles.active=local
+# PostgreSQL connection
+spring.datasource.driver-class-name=org.postgresql.Driver
+spring.datasource.url=jdbc:postgresql://localhost:5433/healthcare
+spring.datasource.username=postgres
+spring.datasource.password=postgres
+
+# Email
+spring.mail.host=smtp.gmail.com
+spring.mail.port=587
+spring.mail.username=shakthirupa2631@gmail.com
+spring.mail.password=ceqlywrwilsxvqpd
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true
+
+# Hibernate / JPA settings
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+
+# JWT Configuration
+# Secret must be at least 32 characters ? use a strong random string in production
+# Never commit the real secret to version control ? use environment variables
+jwt.secret=your-super-secret-key-must-be-at-least-32-chars
+jwt.expiration-ms=86400000
+#jwt.expiration-ms=120000
+# 86400000ms = 24 hours
+# For testing you can use a shorter value like 3600000 (1 hour)
+
+# Refresh token expiry ? 30 days in milliseconds
+jwt.refresh-expiration-ms=2592000000
+
+
+google.client-id=your-google-client-id
+jwt.onboarding-expiration-ms=600000
+
+
+# Groq (chat LLM via OpenAI-compatible API)
+spring.ai.openai.api-key=your-groq-api-key
+spring.ai.openai.base-url=https://api.groq.com/openai
+spring.ai.openai.chat.options.model=meta-llama/llama-4-scout-17b-16e-instruct
+spring.ai.openai.chat.options.temperature=0.2
+spring.ai.openai.embedding.enabled=false
+
+
+# Ollama (embeddings only)
+spring.ai.ollama.base-url=http://localhost:11434
+spring.ai.ollama.embedding.options.model=nomic-embed-text
+
+# pgvector
+spring.ai.vectorstore.pgvector.initialize-schema=true
+spring.ai.vectorstore.pgvector.dimensions=768
+spring.ai.vectorstore.pgvector.distance-type=COSINE_DISTANCE
+spring.ai.vectorstore.pgvector.index-type=HNSW
