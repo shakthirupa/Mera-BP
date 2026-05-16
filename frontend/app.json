@@ -1,6 +1,5 @@
 {
   "expo": {
-<<<<<<< HEAD
     "name": "merabp",
     "slug": "merabp",
     "version": "1.0.0",
@@ -70,11 +69,6 @@
       "router": {},
       "eas": {
         "projectId": "e9c92241-a4c3-4dd8-b700-10ed5b6e45a8"
-=======
-    "extra": {
-      "eas": {
-        "projectId": "5d68302c-a21c-4c42-856d-34aaa5ae8016"
->>>>>>> 25a5ed50d02f09c9001ba1c3065bf480b9ebe65f
       }
     }
   }
