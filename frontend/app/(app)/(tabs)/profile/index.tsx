@@ -24,6 +24,32 @@ interface Observation {
   date: string;
 }
 
+const CHART_POINT_COUNT = 6;
+
+/** Oldest → newest (left → right on graph), max 6 most recent readings. */
+function prepareChartSeries(
+  raw: { effectiveDateTime: string; value1: number; value2?: number }[]
+): { effectiveDateTime: string; value1: number; value2?: number }[] {
+  return [...raw]
+    .sort(
+      (a, b) =>
+        new Date(a.effectiveDateTime).getTime() -
+        new Date(b.effectiveDateTime).getTime()
+    )
+    .slice(-CHART_POINT_COUNT);
+}
+
+function toObservationPoints(
+  series: { effectiveDateTime: string; value1: number; value2?: number }[],
+  pickY: (obs: (typeof series)[0]) => number
+): Observation[] {
+  return series.map((obs, index) => ({
+    x: index + 1,
+    y: pickY(obs),
+    date: obs.effectiveDateTime.split("T")[0],
+  }));
+}
+
 /* ===================== MAIN SCREEN ===================== */
 
 export default function ProfileAllInOneScreen() {
@@ -57,14 +83,8 @@ export default function ProfileAllInOneScreen() {
       });
       if (hrRes.ok) {
         const hrData = await hrRes.json();
-        const latest6HR = hrData.slice(0, 6).reverse();
-        setHeartRateData(
-          latest6HR.map((obs: any, index: number) => ({
-            x:    index + 1,
-            y:    obs.value1,
-            date: obs.effectiveDateTime.split("T")[0],
-          }))
-        );
+        const series = prepareChartSeries(hrData);
+        setHeartRateData(toObservationPoints(series, (obs) => obs.value1));
       }
 
       const bpRes = await fetch(`${API.OBSERVATIONS}?code=BLOOD_PRESSURE`, {
@@ -72,18 +92,10 @@ export default function ProfileAllInOneScreen() {
       });
       if (bpRes.ok) {
         const bpRaw = await bpRes.json();
-        const latest6BP = bpRaw.slice(0, 6).reverse();
+        const series = prepareChartSeries(bpRaw);
         setBpData({
-          systolic: latest6BP.map((obs: any, index: number) => ({
-            x:    index + 1,
-            y:    obs.value1,
-            date: obs.effectiveDateTime.split("T")[0],
-          })),
-          diastolic: latest6BP.map((obs: any, index: number) => ({
-            x:    index + 1,
-            y:    obs.value2,
-            date: obs.effectiveDateTime.split("T")[0],
-          })),
+          systolic: toObservationPoints(series, (obs) => obs.value1),
+          diastolic: toObservationPoints(series, (obs) => obs.value2 ?? 0),
         });
       }
     } catch (error) {
@@ -434,85 +446,88 @@ function GraphBase({ title, icon, yDomain, children }: { title: string; icon: st
 }
 
 function GraphLines({ datasets, yDomain }: { datasets: { color: string; data: Observation[] }[]; yDomain: number[] }) {
+  const [containerWidth, setContainerWidth] = useState(0);
   const [minY, maxY] = yDomain;
   const dataLength = datasets[0].data.length;
 
-  // single point gets a generous gap so the dot is centred and visible
-  const pointGap = dataLength <= 2 ? 250 : dataLength === 3 ? 100 : 50;
-  const graphWidth = dataLength * pointGap + LEFT_PADDING + 10;
+  // Fit all points within the container — no scrolling needed
+  const pointGap = dataLength <= 1 ? 0 : (containerWidth - LEFT_PADDING - 20) / (dataLength - 1);
+  const graphWidth = containerWidth > 0 ? containerWidth : 300;
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     return `${date.getDate()} ${date.toLocaleString('default', { month: 'short' })}`;
   };
 
-  // safe normaliser — avoids divide-by-zero when all values are identical
   const normaliseY = (y: number) => {
     if (maxY === minY) return GRAPH_HEIGHT / 2 + 10;
     return GRAPH_HEIGHT - ((y - minY) / (maxY - minY)) * GRAPH_HEIGHT + 10;
   };
 
+  if (containerWidth === 0) {
+    return <View style={{ flex: 1 }} onLayout={e => setContainerWidth(e.nativeEvent.layout.width)} />;
+  }
+
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-      <View>
-        <Svg width={graphWidth} height={GRAPH_HEIGHT + 20}>
-          {/* Horizontal grid lines */}
-          {[0, 1, 2, 3, 4].map((i) => (
-            <Line
-              key={i}
-              x1={0} y1={(i / 4) * GRAPH_HEIGHT + 10}
-              x2={graphWidth} y2={(i / 4) * GRAPH_HEIGHT + 10}
-              stroke={i === 0 || i === 4 ? "#9CA3AF" : "#E5E7EB"}
-              strokeWidth="1"
-            />
-          ))}
+    <View style={{ flex: 1 }} onLayout={e => setContainerWidth(e.nativeEvent.layout.width)}>
+      <Svg width={graphWidth} height={GRAPH_HEIGHT + 20}>
+        {/* Horizontal grid lines */}
+        {[0, 1, 2, 3, 4].map((i) => (
+          <Line
+            key={i}
+            x1={0} y1={(i / 4) * GRAPH_HEIGHT + 10}
+            x2={graphWidth} y2={(i / 4) * GRAPH_HEIGHT + 10}
+            stroke={i === 0 || i === 4 ? "#9CA3AF" : "#E5E7EB"}
+            strokeWidth="1"
+          />
+        ))}
 
-          {/* Vertical grid lines */}
-          {datasets[0].data.map((_, i) => (
-            <Line
-              key={i}
-              x1={i * pointGap + LEFT_PADDING} y1={10}
-              x2={i * pointGap + LEFT_PADDING} y2={GRAPH_HEIGHT + 10}
-              stroke="#F3F4F6" strokeWidth="1"
-            />
-          ))}
+        {/* Vertical grid lines */}
+        {datasets[0].data.map((_, i) => (
+          <Line
+            key={i}
+            x1={i * pointGap + LEFT_PADDING} y1={10}
+            x2={i * pointGap + LEFT_PADDING} y2={GRAPH_HEIGHT + 10}
+            stroke="#F3F4F6" strokeWidth="1"
+          />
+        ))}
 
-          {/* Lines + Points */}
-          {datasets.map((set, setIndex) => {
-            const coords = set.data.map((p, i) => ({
-              cx: i * pointGap + LEFT_PADDING,
-              cy: normaliseY(p.y),
-            }));
+        {/* Lines + Points */}
+        {datasets.map((set, setIndex) => {
+          const coords = set.data.map((p, i) => ({
+            cx: dataLength === 1 ? graphWidth / 2 : i * pointGap + LEFT_PADDING,
+            cy: normaliseY(p.y),
+          }));
 
-            return (
-              <React.Fragment key={setIndex}>
-                {/* Only draw the line if there are 2+ points */}
-                {coords.length >= 2 && (
-                  <Polyline
-                    points={coords.map(c => `${c.cx},${c.cy}`).join(" ")}
-                    fill="none"
-                    stroke={set.color}
-                    strokeWidth="2"
-                  />
-                )}
-                {coords.map((c, i) => (
-                  <Circle key={i} cx={c.cx} cy={c.cy} r="4" fill={set.color} />
-                ))}
-              </React.Fragment>
-            );
-          })}
-        </Svg>
+          return (
+            <React.Fragment key={setIndex}>
+              {coords.length >= 2 && (
+                <Polyline
+                  points={coords.map(c => `${c.cx},${c.cy}`).join(" ")}
+                  fill="none"
+                  stroke={set.color}
+                  strokeWidth="2"
+                />
+              )}
+              {coords.map((c, i) => (
+                <Circle key={i} cx={c.cx} cy={c.cy} r="4" fill={set.color} />
+              ))}
+            </React.Fragment>
+          );
+        })}
+      </Svg>
 
-        {/* X axis labels */}
-        <View style={[styles.xAxis, { width: graphWidth }]}>
-          {datasets[0].data.map((point, index) => (
-            <Text key={index} style={[styles.xLabel, { left: index * pointGap + LEFT_PADDING }]}>
-              {point.date ? formatDate(point.date) : ""}
-            </Text>
-          ))}
-        </View>
+      {/* X axis labels */}
+      <View style={[styles.xAxis, { width: graphWidth }]}>
+        {datasets[0].data.map((point, index) => (
+          <Text key={index} style={[styles.xLabel, {
+            left: dataLength === 1 ? graphWidth / 2 : index * pointGap + LEFT_PADDING
+          }]}>
+            {point.date ? formatDate(point.date) : ""}
+          </Text>
+        ))}
       </View>
-    </ScrollView>
+    </View>
   );
 }
 

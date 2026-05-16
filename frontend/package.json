@@ -1,4 +1,5 @@
 {
+<<<<<<< HEAD
   "name": "merabp",
   "main": "expo-router/entry",
   "version": "1.0.0",
@@ -56,4 +57,14 @@
     "typescript": "~5.9.2"
   },
   "private": true
+=======
+  "name": "merabp-root",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "backend": "cd backend && mvnw.cmd spring-boot:run",
+    "frontend": "cd frontend && npm start",
+    "dev": "start cmd /k \"cd backend && mvnw.cmd spring-boot:run\" && start cmd /k \"cd frontend && npm start\""
+  }
+>>>>>>> 25a5ed50d02f09c9001ba1c3065bf480b9ebe65f
 }

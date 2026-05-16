@@ -1,0 +1,6 @@
+package com.merabp.healthcare.model;
+
+public enum OtpPurpose {
+    REGISTRATION,
+    FORGOT_PASSWORD
+}

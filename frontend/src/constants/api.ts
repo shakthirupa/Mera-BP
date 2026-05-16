@@ -1,4 +1,6 @@
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://10.219.43.178:8080";
+// Set EXPO_PUBLIC_API_URL in frontend/.env (dev) or EAS secrets (APK build).
+// Must be reachable from other phones — not localhost or your PC's LAN IP unless they share your Wi‑Fi.
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8080";
 export const API = {
   // Auth
   START_EMAIL_SIGNUP:      `${BASE_URL}/auth/start-email-signup`,
