@@ -1,2 +1,11 @@
-.env
-.env.local
+node_modules/
+.venv/
+llm_env/
+__pycache__/
+*.bin
+*.pt
+*.pth
+*.safetensors
+medical-lora/
+results/
+datasets/
