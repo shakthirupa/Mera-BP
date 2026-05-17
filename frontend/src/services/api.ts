@@ -10,13 +10,23 @@ import { clearTokens, getAccessToken, getRefreshToken, saveTokens } from './toke
 // ── Base request ──────────────────────────────────────────────────────────────
 
 async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(url, {
-    headers: { 'Content-Type': 'application/json', ...options.headers },
-    ...options,
-  });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.message || 'Something went wrong.');
-  return data as T;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  try {
+    const response = await fetch(url, {
+      headers: { 'Content-Type': 'application/json', ...options.headers },
+      signal: controller.signal,
+      ...options,
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Something went wrong.');
+    return data as T;
+  } catch (e: any) {
+    if (e.name === 'AbortError') throw new Error('Request timed out. The server may be starting up — please try again.');
+    throw e;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 // ── Authenticated request ─────────────────────────────────────────────────────
