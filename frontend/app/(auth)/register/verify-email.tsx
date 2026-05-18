@@ -278,7 +278,7 @@ useEffect(() => {
                   (isExpired || verifying) && styles.otpInputDisabled,
                 ]}
                 keyboardType="number-pad"
-                maxLength={OTP_LENGTH}
+                maxLength={1}
                 value={digit}
                 onChangeText={(text) => handleChange(text, index)}
                 onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent.key, index)}
