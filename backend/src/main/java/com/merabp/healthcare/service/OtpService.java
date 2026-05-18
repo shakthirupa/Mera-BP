@@ -84,7 +84,6 @@ public class OtpService {
         return String.format("%0" + OTP_LENGTH + "d", otp);
     }
 
-    @Async
     private void sendOtpEmail(String toEmail, String otp, OtpPurpose purpose) {
         String subject = purpose == OtpPurpose.REGISTRATION ? "Verify your email" : "Reset your password";
         String text = purpose == OtpPurpose.REGISTRATION
