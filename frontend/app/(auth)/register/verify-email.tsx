@@ -50,8 +50,8 @@ const inputRefs = useRef<(TextInput | null)[]>([]);
 const [timeLeft, setTimeLeft] = useState(0);
 const [resendCooldown, setResendCooldown] = useState(0);
 
-const isOtpComplete = otp.every((d) => d !== "");
-const isExpired = timeLeft === 0;
+const isOtpComplete = otp.join("").length === OTP_LENGTH;
+const isExpired = false;
 const canResend = resendCooldown === 0;
 
 // timestamps
@@ -292,10 +292,10 @@ useEffect(() => {
           <TouchableOpacity
             style={[
               styles.verifyButton,
-              (!isOtpComplete || verifying || isExpired) && styles.buttonDisabled,
+              (!isOtpComplete || verifying) && styles.buttonDisabled,
             ]}
             onPress={handleVerify}
-            disabled={!isOtpComplete || verifying || isExpired}
+            disabled={!isOtpComplete || verifying}
           >
             {verifying
               ? <ActivityIndicator color="#fff" />
