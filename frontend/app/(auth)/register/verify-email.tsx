@@ -282,7 +282,7 @@ useEffect(() => {
                 value={digit}
                 onChangeText={(text) => handleChange(text, index)}
                 onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent.key, index)}
-                editable={!verifying && !isExpired}
+                editable={!verifying}
                 selectTextOnFocus
               />
             ))}

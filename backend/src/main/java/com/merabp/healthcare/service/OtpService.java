@@ -24,7 +24,7 @@ import java.time.LocalDateTime;
 public class OtpService {
 
     private static final Logger log = LoggerFactory.getLogger(OtpService.class);
-    private static final int OTP_EXPIRY_MINUTES = 5;
+    private static final int OTP_EXPIRY_MINUTES = 10;
     private static final int OTP_LENGTH = 6;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
