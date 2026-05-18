@@ -108,9 +108,9 @@ public class OtpService {
             HttpResponse<String> response = HttpClient.newHttpClient()
                     .send(request, HttpResponse.BodyHandlers.ofString());
 
-            log.info("Brevo email sent to {}: status {}", toEmail, response.statusCode());
+            log.info("Brevo email sent to {}: status {} body {}", toEmail, response.statusCode(), response.body());
         } catch (Exception e) {
-            log.error("Failed to send OTP email to {}: {}", toEmail, e.getMessage());
+            log.error("Failed to send OTP email to {}: {}", toEmail, e.getMessage(), e);
         }
     }
 }
