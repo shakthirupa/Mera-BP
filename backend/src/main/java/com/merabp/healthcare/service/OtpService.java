@@ -85,6 +85,8 @@ public class OtpService {
     }
 
     private void sendOtpEmail(String toEmail, String otp, OtpPurpose purpose) {
+        log.info("=== SENDING EMAIL TO {} via Brevo API ===", toEmail);
+        log.info("=== BREVO API KEY starts with: {} ===", brevoApiKey != null ? brevoApiKey.substring(0, 10) : "NULL");
         String subject = purpose == OtpPurpose.REGISTRATION ? "Verify your email" : "Reset your password";
         String text = purpose == OtpPurpose.REGISTRATION
                 ? "Welcome! Your verification OTP is: " + otp + ". Valid for " + OTP_EXPIRY_MINUTES + " minutes."
