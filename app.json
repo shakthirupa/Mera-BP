@@ -4,6 +4,9 @@
       "eas": {
         "projectId": "5d68302c-a21c-4c42-856d-34aaa5ae8016"
       }
+    },
+    "android": {
+      "package": "com.shakthirupag.merabproot"
     }
   }
 }
