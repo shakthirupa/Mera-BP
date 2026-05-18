@@ -103,7 +103,7 @@ useEffect(() => {
   // ── Focus first input on mount ────────────────────────────────────────────
 
   useEffect(() => {
-    setTimeout(() => inputRefs.current[0]?.focus(), 100);
+    setTimeout(() => inputRefs.current[0]?.focus(), 500);
   }, []);
 
   // ── OTP input handlers ────────────────────────────────────────────────────
@@ -423,13 +423,13 @@ const styles = StyleSheet.create({
     marginBottom:   20,
   },
   otpInput: {
-    width:        45,
-    height:       50,
+    width:        50,
+    height:       55,
     borderWidth:  1,
     borderColor:  "#E2E8F0",
     borderRadius: 10,
     textAlign:    "center",
-    fontSize:     18,
+    fontSize:     20,
     fontWeight:   "600",
     color:        COLORS.text,
   },
