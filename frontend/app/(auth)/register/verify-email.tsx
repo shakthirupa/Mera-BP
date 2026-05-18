@@ -55,7 +55,7 @@ const isExpired = false;
 const canResend = resendCooldown === 0;
 
 // timestamps
-const expiryTime = new Date(signupData.otpExpiresAt ?? "").getTime();
+const expiryTime = new Date((signupData.otpExpiresAt ?? "") + "Z").getTime();
 const resendAvailableAt = expiryTime - (5 * 60 - RESEND_COOLDOWN) * 1000;
 // explanation below
 
