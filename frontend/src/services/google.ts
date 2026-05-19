@@ -39,11 +39,13 @@ export async function saveAccount(account: SavedAccount): Promise<void> {
 const WEB_CLIENT_ID     = process.env.EXPO_PUBLIC_WEB_ID!;
 const ANDROID_CLIENT_ID = process.env.EXPO_PUBLIC_ANDROID_ID!;
 
-const clientId = Platform.OS === 'android' ? ANDROID_CLIENT_ID : WEB_CLIENT_ID;
+// For the authorization code + PKCE flow, always use the Web client ID.
+// Android client IDs only work with native Google Sign-In SDKs, not OAuth code flow.
+const clientId = WEB_CLIENT_ID;
 
 export const redirectUri = Platform.OS === 'web'
   ? 'http://localhost:8081'
-  : AuthSession.makeRedirectUri({ scheme: 'com.googleusercontent.apps.1010196405034-fkb5he649cfqm3j3ten5vvpmn4qnb5h5' });
+  : AuthSession.makeRedirectUri({ scheme: 'com.googleusercontent.apps.1010196405034-krrn1bcf175jrklnmfplpb2l12pk8lpv' });
 
 // ── Web: full-page redirect flow ──────────────────────────────────────────────
 // Instead of a popup (which COOP blocks), we redirect the whole page to Google,
@@ -98,7 +100,7 @@ export function getGoogleAuthResult(): GoogleCodeResult | null {
 export async function googleAuth(): Promise<GoogleCodeResult | null> {
   const discovery = await AuthSession.fetchDiscoveryAsync('https://accounts.google.com');
   const nativeRedirectUri = AuthSession.makeRedirectUri({
-    scheme: 'com.googleusercontent.apps.1010196405034-fkb5he649cfqm3j3ten5vvpmn4qnb5h5',
+    scheme: 'com.googleusercontent.apps.1010196405034-krrn1bcf175jrklnmfplpb2l12pk8lpv',
   });
   const request   = new AuthSession.AuthRequest({
     clientId,

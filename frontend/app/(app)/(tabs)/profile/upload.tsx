@@ -105,14 +105,18 @@ export default function LabReportsScreen() {
           const data = await response.json();
           if (!response.ok) throw new Error(data.message || `Failed to load ${config.label}`);
 
-          return data.map((obs: any): LabRecord => ({
-            id:        String(obs.id),
-            metricKey: key,
-            value:     config.formatValue(obs.value1, obs.value2),
-            date:      obs.effectiveDateTime.split("T")[0],
-            time:      obs.effectiveDateTime.split("T")[1]?.slice(0, 5) ?? "",
-            notes:     obs.notes ?? "",
-          }));
+          return data.map((obs: any): LabRecord => {
+            const local = new Date(obs.effectiveDateTime + "Z");
+            const pad2  = (n: number) => String(n).padStart(2, "0");
+            return {
+              id:        String(obs.id),
+              metricKey: key,
+              value:     config.formatValue(obs.value1, obs.value2),
+              date:      `${local.getFullYear()}-${pad2(local.getMonth() + 1)}-${pad2(local.getDate())}`,
+              time:      `${pad2(local.getHours())}:${pad2(local.getMinutes())}`,
+              notes:     obs.notes ?? "",
+            };
+          });
         })
       );
 
@@ -135,11 +139,29 @@ export default function LabReportsScreen() {
   const formatTimeDisplay = (t: Date) =>
     `${pad(t.getHours())}:${pad(t.getMinutes())}`;
   const buildEffectiveDateTime = () => {
-    const d = selectedDate, t = selectedTime;
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(t.getHours())}:${pad(t.getMinutes())}:00`;
+    const merged = new Date(
+      selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(),
+      selectedTime.getHours(), selectedTime.getMinutes(), 0
+    );
+    return merged.toISOString().slice(0, 19);
   };
+  const getRangeWarnings = () => {
+    if (!activeConfig) return [];
+    const warnings: string[] = [];
+    activeConfig.inputs.forEach((input) => {
+      const raw = formValues[input.field];
+      if (!raw || raw.trim() === "") return;
+      const val = parseFloat(raw);
+      if (isNaN(val)) return;
+      if (val < input.min || val > input.max)
+        warnings.push(`${input.label} must be between ${input.min}–${input.max} ${input.unit}. You entered ${val}.`);
+    });
+    return warnings;
+  };
+
   const isFormValid = () =>
-    activeConfig?.inputs.every((i) => formValues[i.field]?.trim() !== "") ?? false;
+    (activeConfig?.inputs.every((i) => formValues[i.field]?.trim() !== "") ?? false) &&
+    getRangeWarnings().length === 0;
   const resetForm = (config?: MetricConfig) => {
     setFormValues(config ? emptyForm(config) : {});
     setFormNotes("");
@@ -165,8 +187,9 @@ export default function LabReportsScreen() {
       effectiveDateTime: buildEffectiveDateTime(),
       notes:             formNotes.trim() || null,
     };
-    if (activeConfig.context)               body.context = activeConfig.context;
-    if (formValues["value2"] !== undefined)  body.value2  = parseFloat(formValues["value2"]);
+    if (activeConfig.context) body.context = activeConfig.context;
+    const hasValue2Input = activeConfig.inputs.some((i) => i.field === "value2");
+    if (hasValue2Input && formValues["value2"] !== undefined && formValues["value2"] !== "") body.value2 = parseFloat(formValues["value2"]);
 
     try {
       const token    = await getAccessToken();
@@ -176,7 +199,12 @@ export default function LabReportsScreen() {
         body:    JSON.stringify(body),
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message || "Failed to add record.");
+      if (!response.ok) {
+        const msg = data.errors
+          ? Object.values(data.errors as Record<string, string>).join(", ")
+          : data.message || "Failed to add record.";
+        throw new Error(msg);
+      }
       setShowAddModal(false);
       resetForm();
       loadAllRecords();
@@ -217,8 +245,9 @@ export default function LabReportsScreen() {
       effectiveDateTime: buildEffectiveDateTime(),
       notes:             formNotes.trim() || null,
     };
-    if (activeConfig.context)               body.context = activeConfig.context;
-    if (formValues["value2"] !== undefined)  body.value2  = parseFloat(formValues["value2"]);
+    if (activeConfig.context) body.context = activeConfig.context;
+    const hasValue2Input = activeConfig.inputs.some((i) => i.field === "value2");
+    if (hasValue2Input && formValues["value2"] !== undefined && formValues["value2"] !== "") body.value2 = parseFloat(formValues["value2"]);
 
     try {
       const token    = await getAccessToken();
@@ -228,7 +257,12 @@ export default function LabReportsScreen() {
         body:    JSON.stringify(body),
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message || "Failed to update record.");
+      if (!response.ok) {
+        const msg = data.errors
+          ? Object.values(data.errors as Record<string, string>).join(", ")
+          : data.message || "Failed to update record.";
+        throw new Error(msg);
+      }
       setShowEditModal(false);
       resetForm();
       setSelectedRecord(null);
@@ -277,6 +311,7 @@ export default function LabReportsScreen() {
 
   const renderForm = () => {
     if (!activeConfig) return null;
+    const warnings = getRangeWarnings();
     return (
       <View style={styles.inputSection}>
         <View style={styles.dateTimeSection}>
@@ -293,23 +328,40 @@ export default function LabReportsScreen() {
           </View>
         </View>
 
-        {activeConfig.inputs.map((input) => (
-          <View key={input.field}>
-            <Text style={styles.inputLabel}>
-              {input.label} <Text style={styles.unitHint}>({input.unit})</Text>
-            </Text>
-            <TextInput
-              style={styles.modalInput}
-              value={formValues[input.field] ?? ""}
-              onChangeText={(text) =>
-                setFormValues((prev) => ({ ...prev, [input.field]: text }))
-              }
-              placeholder={input.placeholder}
-              placeholderTextColor="#b6c0cd"
-              keyboardType="numeric"
-            />
+        {activeConfig.inputs.map((input) => {
+          const raw = formValues[input.field] ?? "";
+          const val = parseFloat(raw);
+          const isOutOfRange = raw.trim() !== "" && !isNaN(val) && (val < input.min || val > input.max);
+          return (
+            <View key={input.field}>
+              <Text style={styles.inputLabel}>
+                {input.label} <Text style={styles.unitHint}>({input.unit})</Text>
+              </Text>
+              <TextInput
+                style={[styles.modalInput, isOutOfRange && styles.inputError]}
+                value={raw}
+                onChangeText={(text) => setFormValues((prev) => ({ ...prev, [input.field]: text }))}
+                placeholder={input.placeholder}
+                placeholderTextColor="#b6c0cd"
+                keyboardType="numeric"
+              />
+              <Text style={styles.rangeHint}>Valid range: {input.min}–{input.max} {input.unit}</Text>
+            </View>
+          );
+        })}
+
+        {warnings.length > 0 && (
+          <View style={styles.warningBanner}>
+            <Ionicons name="warning" size={18} color="#92400E" style={{ marginTop: 2 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.warningTitle}>Value out of accepted range</Text>
+              {warnings.map((w, i) => (
+                <Text key={i} style={styles.warningText}>• {w}</Text>
+              ))}
+              <Text style={styles.warningNote}>Please double-check your reading and re-enter a valid value.</Text>
+            </View>
           </View>
-        ))}
+        )}
 
         <Text style={styles.inputLabel}>
           Notes <Text style={styles.unitHint}>(optional)</Text>
@@ -642,6 +694,12 @@ const styles = StyleSheet.create({
   inputLabel:       { fontSize: 16, fontWeight: "600", color: "#374151", marginBottom: 8, marginTop: 12 },
   unitHint:         { fontWeight: "400", color: "#9CA3AF", fontSize: 14 },
   modalInput:       { borderWidth: 1, borderColor: "#D1D5DB", borderRadius: 12, padding: 16, fontSize: 16, backgroundColor: "#F9FAFB" },
+  inputError:       { borderColor: "#EF4444", backgroundColor: "#FFF5F5" },
+  rangeHint:        { fontSize: 11, color: "#9CA3AF", marginTop: 4, marginLeft: 2 },
+  warningBanner:    { flexDirection: "row", gap: 10, backgroundColor: "#FFFBEB", borderWidth: 1, borderColor: "#FCD34D", borderRadius: 12, padding: 12, marginTop: 14 },
+  warningTitle:     { fontSize: 13, fontWeight: "700", color: "#92400E", marginBottom: 4 },
+  warningText:      { fontSize: 12, color: "#92400E", lineHeight: 18 },
+  warningNote:      { fontSize: 11, color: "#B45309", marginTop: 6, fontStyle: "italic" },
   notesInput:       { height: 80, textAlignVertical: "top" },
   dateTimeSection:  { marginBottom: 4 },
   dateTimeRow:      { flexDirection: "row", gap: 12, marginTop: 8 },

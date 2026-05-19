@@ -203,139 +203,209 @@ export default function ProfileAllInOneScreen() {
 
 /* ===================== INSIGHTS ===================== */
 
+type Pattern = "consistently_low" | "consistently_high" | "volatile" | "improving" | "worsening" | "normal";
+
+function classifyHRPattern(values: number[]): Pattern {
+  const isLow  = (v: number) => v < 60;
+  const isHigh = (v: number) => v > 100;
+  const isNorm = (v: number) => v >= 60 && v <= 100;
+  const n = values.length;
+
+  if (n === 1) {
+    if (isLow(values[0]))  return "consistently_low";
+    if (isHigh(values[0])) return "consistently_high";
+    return "normal";
+  }
+
+  const lowCount  = values.filter(isLow).length;
+  const highCount = values.filter(isHigh).length;
+  const normCount = values.filter(isNorm).length;
+
+  let reversals = 0;
+  for (let i = 1; i < n - 1; i++) {
+    const prev = values[i - 1], curr = values[i], next = values[i + 1];
+    if ((curr > prev && curr > next) || (curr < prev && curr < next)) reversals++;
+  }
+  const swing = Math.max(...values) - Math.min(...values);
+
+  if (reversals >= 2 && swing > 30) return "volatile";
+  if (lowCount  >= Math.ceil(n * 0.7)) return "consistently_low";
+  if (highCount >= Math.ceil(n * 0.7)) return "consistently_high";
+
+  if (n >= 3) {
+    const mid  = Math.floor(n / 2);
+    const avg1 = values.slice(0, mid).reduce((a, b) => a + b, 0) / mid;
+    const avg2 = values.slice(mid).reduce((a, b) => a + b, 0) / (n - mid);
+    if (avg2 - avg1 >  8) return "worsening";
+    if (avg1 - avg2 >  8) return "improving";
+  }
+
+  if (normCount >= Math.ceil(n * 0.7)) return "normal";
+  return "volatile";
+}
+
+function classifyBPPattern(sysValues: number[]): Pattern {
+  const isLow  = (v: number) => v < 90;
+  const isHigh = (v: number) => v >= 130;
+  const isNorm = (v: number) => v >= 90 && v < 130;
+  const n = sysValues.length;
+
+  if (n === 1) {
+    if (isLow(sysValues[0]))  return "consistently_low";
+    if (isHigh(sysValues[0])) return "consistently_high";
+    return "normal";
+  }
+
+  const lowCount  = sysValues.filter(isLow).length;
+  const highCount = sysValues.filter(isHigh).length;
+  const normCount = sysValues.filter(isNorm).length;
+
+  let reversals = 0;
+  for (let i = 1; i < n - 1; i++) {
+    const prev = sysValues[i - 1], curr = sysValues[i], next = sysValues[i + 1];
+    if ((curr > prev && curr > next) || (curr < prev && curr < next)) reversals++;
+  }
+  const swing = Math.max(...sysValues) - Math.min(...sysValues);
+
+  if (reversals >= 2 && swing > 40) return "volatile";
+  if (lowCount  >= Math.ceil(n * 0.7)) return "consistently_low";
+  if (highCount >= Math.ceil(n * 0.7)) return "consistently_high";
+
+  if (n >= 3) {
+    const mid  = Math.floor(n / 2);
+    const avg1 = sysValues.slice(0, mid).reduce((a, b) => a + b, 0) / mid;
+    const avg2 = sysValues.slice(mid).reduce((a, b) => a + b, 0) / (n - mid);
+    if (avg2 - avg1 > 10) return "worsening";
+    if (avg1 - avg2 > 10) return "improving";
+  }
+
+  if (normCount >= Math.ceil(n * 0.7)) return "normal";
+  return "volatile";
+}
+
 function HeartRateInsights({ data }: { data: Observation[] }) {
-  const values = data.map(d => d.y);
-  const avg = Math.round(values.reduce((a, b) => a + b, 0) / values.length);
-  const max = Math.max(...values);
-  const min = Math.min(...values);
+  const values  = data.map(d => d.y);
+  const avg     = Math.round(values.reduce((a, b) => a + b, 0) / values.length);
+  const max     = Math.max(...values);
+  const min     = Math.min(...values);
+  const pattern = classifyHRPattern(values);
 
-  // ── Primary: is the average in a healthy range? ───────────────
-  let status: string, message: string, icon: string, color: string;
+  const INFO: Record<Pattern, { status: string; message: string; icon: string; color: string }> = {
+    consistently_low: {
+      status:  "Consistently Low (Bradycardia)",
+      message: "Your heart rate has been consistently below 60 bpm across your readings. While this can be normal for trained athletes, persistent bradycardia in others may cause dizziness, fatigue, or fainting. If you are not an athlete, please consult your doctor.",
+      icon: "arrow-down-circle", color: "#F59E0B",
+    },
+    consistently_high: {
+      status:  "Consistently Elevated (Tachycardia)",
+      message: "Your heart rate has been consistently above 100 bpm across your readings. A persistently high resting heart rate can strain the heart over time and may indicate stress, dehydration, thyroid issues, or other conditions. Please consult your doctor.",
+      icon: "arrow-up-circle", color: "#EF4444",
+    },
+    volatile: {
+      status:  "Highly Inconsistent — See a Doctor",
+      message: "Your heart rate is swinging significantly between readings — alternating between high and low values. This kind of irregularity can indicate an arrhythmia or other cardiac condition. Please consult a doctor as soon as possible.",
+      icon: "alert-circle", color: "#DC2626",
+    },
+    worsening: {
+      status:  "Trending Upward",
+      message: "Your recent heart rate readings are higher than your earlier ones. This upward trend may reflect increasing stress, reduced fitness, or an underlying condition. Monitor closely and consult your doctor if it continues.",
+      icon: "trending-up", color: "#F59E0B",
+    },
+    improving: {
+      status:  "Trending Downward",
+      message: "Your heart rate has been coming down over your recent readings. If you were previously elevated, this is a positive sign. Continue your current lifestyle habits and keep monitoring.",
+      icon: "trending-down", color: "#10B981",
+    },
+    normal: {
+      status:  "Normal",
+      message: "Your heart rate readings are consistently within the healthy resting range of 60-100 bpm. Keep up your current lifestyle — regular exercise, good sleep, and stress management all contribute to a healthy heart rate.",
+      icon: "checkmark-circle", color: "#10B981",
+    },
+  };
 
-  if (avg < 40) {
-    status = "Critically Low";
-    message = "Your average heart rate is critically low. Please seek immediate medical attention.";
-    icon = "alert-circle"; color = "#DC2626";
-  } else if (avg < 60) {
-    status = "Low (Bradycardia)";
-    message = "Your average resting heart rate is below 60 bpm. This may be normal for athletes, but consult your doctor if you experience dizziness or fatigue.";
-    icon = "alert-circle"; color = "#F59E0B";
-  } else if (avg <= 100) {
-    status = "Normal";
-    message = "Your average resting heart rate is within the healthy range of 60–100 bpm.";
-    icon = "checkmark-circle"; color = "#10B981";
-  } else if (avg <= 120) {
-    status = "Elevated (Tachycardia)";
-    message = "Your average heart rate is above 100 bpm. Occasional elevation can occur with activity or stress, but a consistently high resting rate warrants a doctor's review.";
-    icon = "warning"; color = "#F59E0B";
-  } else {
-    status = "High — Consult Doctor";
-    message = "Your average heart rate is significantly elevated. Please consult your doctor promptly.";
-    icon = "alert-circle"; color = "#DC2626";
-  }
-
-  // ── Secondary: trend (only meaningful with 3+ readings) ──────
-  let trendNote = "";
-  if (values.length >= 3) {
-    const firstHalf  = values.slice(0, Math.floor(values.length / 2));
-    const secondHalf = values.slice(Math.floor(values.length / 2));
-    const avgFirst   = firstHalf.reduce((a, b) => a + b, 0)  / firstHalf.length;
-    const avgSecond  = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
-    const diff = avgSecond - avgFirst;
-    if (diff > 5)       trendNote = " Your readings show an upward trend — monitor closely.";
-    else if (diff < -5) trendNote = " Your readings show a downward trend.";
-    else                trendNote = " Your readings are stable.";
-  }
+  const { status, message, icon, color } = INFO[pattern];
 
   return (
-    <View style={[styles.insightCard, { borderLeftColor: color }]}>
+    <View style={[styles.insightCard, { borderLeftWidth: 4, borderLeftColor: color }]}>
       <View style={styles.insightHeader}>
         <Ionicons name={icon as any} size={20} color={color} />
         <Text style={[styles.insightTitle, { color }]}>{status}</Text>
       </View>
-      <Text style={styles.insightMessage}>{message}{trendNote}</Text>
+      <Text style={styles.insightMessage}>{message}</Text>
       <View style={styles.insightStats}>
         <View style={styles.statItem}>
           <Text style={styles.statLabel}>Average</Text>
           <Text style={styles.statValue}>{avg} bpm</Text>
         </View>
         <View style={styles.statItem}>
-          <Text style={styles.statLabel}>Range</Text>
-          <Text style={styles.statValue}>
-            {values.length > 1 ? `${min}–${max} bpm` : `${avg} bpm`}
-          </Text>
+          <Text style={styles.statLabel}>Lowest</Text>
+          <Text style={styles.statValue}>{min} bpm</Text>
+        </View>
+        <View style={styles.statItem}>
+          <Text style={styles.statLabel}>Highest</Text>
+          <Text style={styles.statValue}>{max} bpm</Text>
         </View>
       </View>
     </View>
   );
 }
 
-function BloodPressureInsights({ data }: { data: { systolic: Observation[], diastolic: Observation[] } }) {
+function BloodPressureInsights({ data }: { data: { systolic: Observation[]; diastolic: Observation[] } }) {
   const sysValues = data.systolic.map(d => d.y);
   const diaValues = data.diastolic.map(d => d.y);
-
   const avgSys = Math.round(sysValues.reduce((a, b) => a + b, 0) / sysValues.length);
   const avgDia = Math.round(diaValues.reduce((a, b) => a + b, 0) / diaValues.length);
-
-  // ── Primary: AHA/ACC 2017 + hypotension thresholds ──────────
-  let status: string, message: string, icon: string, color: string;
-
-  if (avgSys < 70 || avgDia < 40) {
-    status = "Critically Low BP";
-    message = "Your blood pressure is critically low. This can reduce blood flow to vital organs. Seek immediate medical attention.";
-    icon = "alert-circle"; color = "#DC2626";
-  } else if (avgSys < 90 || avgDia < 60) {
-    status = "Low BP (Hypotension)";
-    message = "Your blood pressure is below the normal range. Hypotension can cause dizziness, fainting, and fatigue. Stay hydrated, avoid prolonged standing, and consult your doctor if symptoms persist.";
-    icon = "warning"; color = "#F59E0B";
-  } else if (avgSys > 180 || avgDia > 120) {
-    status = "Hypertensive Crisis";
-    message = "Your blood pressure is at a dangerous level. Seek emergency medical care immediately if you have symptoms such as chest pain, shortness of breath, or vision changes.";
-    icon = "alert-circle"; color = "#DC2626";
-  } else if (avgSys < 120 && avgDia < 80) {
-    status = "Normal";
-    message = "Your blood pressure is within the healthy range. Continue maintaining a balanced diet, regular exercise, and a healthy weight.";
-    icon = "checkmark-circle"; color = "#10B981";
-  } else if (avgSys < 130 && avgDia < 80) {
-    status = "Elevated";
-    message = "Your blood pressure is elevated. Without lifestyle changes, elevated BP is likely to develop into hypertension. Focus on reducing sodium intake, increasing physical activity, and managing stress.";
-    icon = "warning"; color = "#F59E0B";
-  } else if ((avgSys >= 130 && avgSys <= 139) || (avgDia >= 80 && avgDia <= 89)) {
-    status = "Stage 1 Hypertension";
-    message = "You have Stage 1 hypertension. Your doctor may recommend lifestyle changes and, in some cases, medication. Monitor your BP regularly and reduce sodium, alcohol, and stress.";
-    icon = "alert-circle"; color = "#EF4444";
-  } else {
-    status = "Stage 2 Hypertension";
-    message = "You have Stage 2 hypertension. A combination of medications and lifestyle changes is typically recommended. Please consult your doctor as soon as possible.";
-    icon = "alert-circle"; color = "#DC2626";
-  }
-
-  // ── Pulse pressure ────────────────────────────────────────────
   const pulsePressure = avgSys - avgDia;
-  let ppNote = "";
-  if (pulsePressure > 60) {
-    ppNote = " Your pulse pressure is elevated (> 60 mmHg), which may indicate arterial stiffness — discuss this with your doctor.";
-  }
+  const pattern = classifyBPPattern(sysValues);
 
-  // ── Trend (3+ readings) ───────────────────────────────────────
-  let trendNote = "";
-  if (sysValues.length >= 3) {
-    const mid      = Math.floor(sysValues.length / 2);
-    const avgSysFirst  = sysValues.slice(0, mid).reduce((a, b) => a + b, 0) / mid;
-    const avgSysSecond = sysValues.slice(mid).reduce((a, b) => a + b, 0)  / (sysValues.length - mid);
-    const diff = avgSysSecond - avgSysFirst;
-    if (diff > 5)       trendNote = " Systolic pressure shows an upward trend — monitor closely.";
-    else if (diff < -5) trendNote = " Systolic pressure shows a downward trend — keep it up.";
-    else                trendNote = " Your readings are stable.";
-  }
+  const INFO: Record<Pattern, { status: string; message: string; icon: string; color: string }> = {
+    consistently_low: {
+      status:  "Consistently Low BP (Hypotension)",
+      message: "Your blood pressure has been consistently low across your readings. Chronic hypotension can cause dizziness, fainting, and reduced blood flow to organs. Stay well hydrated, avoid prolonged standing, and consult your doctor if you have symptoms.",
+      icon: "arrow-down-circle", color: "#F59E0B",
+    },
+    consistently_high: {
+      status:  "Consistently High BP (Hypertension)",
+      message: "Your blood pressure has been consistently elevated across your readings. Sustained high BP significantly increases the risk of heart disease, stroke, and kidney damage. Please consult your doctor — lifestyle changes and/or medication may be needed.",
+      icon: "arrow-up-circle", color: "#EF4444",
+    },
+    volatile: {
+      status:  "Highly Inconsistent BP — See a Doctor",
+      message: "Your blood pressure is fluctuating significantly between readings — swinging from high to low or vice versa. This level of variability is not normal and can indicate white-coat hypertension, medication issues, or an underlying cardiovascular condition. Please consult your doctor promptly.",
+      icon: "alert-circle", color: "#DC2626",
+    },
+    worsening: {
+      status:  "BP Trending Upward",
+      message: "Your recent blood pressure readings are higher than your earlier ones. This upward trend is a warning sign. Reduce sodium intake, manage stress, and consult your doctor before it progresses further.",
+      icon: "trending-up", color: "#F59E0B",
+    },
+    improving: {
+      status:  "BP Trending Downward",
+      message: "Your blood pressure has been coming down over your recent readings. This is a positive trend — your lifestyle changes or medication appear to be working. Keep it up and continue monitoring regularly.",
+      icon: "trending-down", color: "#10B981",
+    },
+    normal: {
+      status:  "Normal BP",
+      message: "Your blood pressure readings are consistently within the healthy range. Maintain a balanced diet low in sodium, stay physically active, manage stress, and keep monitoring regularly to stay on track.",
+      icon: "checkmark-circle", color: "#10B981",
+    },
+  };
+
+  const { status, message, icon, color } = INFO[pattern];
 
   return (
-    <View style={[styles.insightCard, { borderLeftColor: color }]}>
+    <View style={[styles.insightCard, { borderLeftWidth: 4, borderLeftColor: color }]}>
       <View style={styles.insightHeader}>
         <Ionicons name={icon as any} size={20} color={color} />
         <Text style={[styles.insightTitle, { color }]}>{status}</Text>
       </View>
-      <Text style={styles.insightMessage}>{message}{ppNote}{trendNote}</Text>
+      <Text style={styles.insightMessage}>{message}</Text>
+      {pulsePressure > 60 && (
+        <View style={styles.ppWarning}>
+          <Ionicons name="information-circle-outline" size={14} color="#6B7280" />
+          <Text style={styles.ppWarningText}>Pulse pressure is elevated ({pulsePressure} mmHg) — may indicate arterial stiffness. Discuss with your doctor.</Text>
+        </View>
+      )}
       <View style={styles.insightStats}>
         <View style={styles.statItem}>
           <Text style={styles.statLabel}>Avg Systolic</Text>
@@ -568,6 +638,8 @@ const styles = StyleSheet.create({
   insightHeader:      { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
   insightTitle:       { fontSize: 16, fontWeight: "700" },
   insightMessage:     { fontSize: 14, color: "#4B5563", lineHeight: 20, marginBottom: 12 },
+  ppWarning:          { flexDirection: "row", alignItems: "flex-start", gap: 6, backgroundColor: "#F3F4F6", borderRadius: 8, padding: 8, marginBottom: 12 },
+  ppWarningText:      { fontSize: 12, color: "#6B7280", flex: 1, lineHeight: 17 },
   insightStats:       { flexDirection: "row", gap: 20 },
   statItem:           { flex: 1 },
   statLabel:          { fontSize: 12, color: "#9CA3AF", marginBottom: 4 },

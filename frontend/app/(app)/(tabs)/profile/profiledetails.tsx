@@ -197,15 +197,15 @@ export default function ProfileDetailsScreen() {
           <Text style={styles.accountSectionTitle}>Account</Text>
 
           {([
-            { icon: "mail-outline",       label: "Email",        value: user?.email,  route: "/profile/changeEmail",    color: "#2563EB" },
-            { icon: "call-outline",       label: "Phone Number", value: user?.phone,  route: "/profile/changePhone",    color: "#10B981" },
-            { icon: "lock-closed-outline",label: "Change Password",     value: "••••••••",   route: "/profile/changePassword", color: "#F59E0B" },
+            { icon: "mail-outline",        label: "Email",           value: user?.email,  route: null,                      color: "#2563EB" },
+            { icon: "call-outline",        label: "Phone Number",    value: user?.phone,  route: null,                      color: "#10B981" },
+            { icon: "lock-closed-outline", label: "Change Password", value: "••••••••",   route: "/profile/changePassword", color: "#F59E0B" },
           ] as const).map((item, index, arr) => (
             <TouchableOpacity
               key={item.label}
               style={[styles.accountRow, index < arr.length - 1 && styles.accountRowBorder]}
               onPress={() => item.label === "Change Password" ? router.push("/profile/changePassword" as any) : null}
-              activeOpacity={0.7}
+              activeOpacity={item.label === "Change Password" ? 0.7 : 1}
             >
               <View style={[styles.accountIcon, { backgroundColor: `${item.color}18` }]}>
                 <Ionicons name={item.icon} size={18} color={item.color} />
@@ -216,7 +216,9 @@ export default function ProfileDetailsScreen() {
                   {item.value ?? "Not set"}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+              {item.label === "Change Password" && (
+                <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+              )}
             </TouchableOpacity>
           ))}
         </View>

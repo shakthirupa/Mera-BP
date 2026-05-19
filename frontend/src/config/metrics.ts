@@ -17,6 +17,8 @@ export interface ObservationInput {
   label: string;
   placeholder: string;
   unit: string;
+  min: number;
+  max: number;
 }
 
 // ─── Per-metric config shape ──────────────────────────────────────────────────
@@ -49,8 +51,8 @@ export const METRIC_CONFIG: Record<MetricKey, MetricConfig> = {
     label: "Blood Pressure",
     code:  "BLOOD_PRESSURE",
     inputs: [
-      { field: "value1", label: "Systolic",  placeholder: "e.g. 120", unit: "mmHg" },
-      { field: "value2", label: "Diastolic", placeholder: "e.g. 80",  unit: "mmHg" },
+      { field: "value1", label: "Systolic",  placeholder: "e.g. 120", unit: "mmHg", min: 0,  max: 999 },
+      { field: "value2", label: "Diastolic", placeholder: "e.g. 80",  unit: "mmHg", min: 0,  max: 999 },
     ],
     formatValue: (v1, v2) => `${v1}/${v2}`,
     parseValue: (d) => {
@@ -87,7 +89,7 @@ export const METRIC_CONFIG: Record<MetricKey, MetricConfig> = {
     label: "Heart Rate",
     code:  "HEART_RATE",
     inputs: [
-      { field: "value1", label: "Heart Rate", placeholder: "e.g. 72", unit: "bpm" },
+      { field: "value1", label: "Heart Rate", placeholder: "e.g. 72", unit: "bpm", min: 0, max: 999 },
     ],
     formatValue: (v1) => `${v1} bpm`,
     parseValue:  (d) => ({ value1: d.replace(" bpm", "").trim() }),
@@ -116,7 +118,7 @@ export const METRIC_CONFIG: Record<MetricKey, MetricConfig> = {
     label: "HbA1c",
     code:  "HBA1C",
     inputs: [
-      { field: "value1", label: "HbA1c", placeholder: "e.g. 5.7", unit: "%" },
+      { field: "value1", label: "HbA1c", placeholder: "e.g. 5.7", unit: "%", min: 3, max: 15 },
     ],
     formatValue: (v1) => `${v1}%`,
     parseValue:  (d) => ({ value1: d.replace("%", "").trim() }),
@@ -141,7 +143,7 @@ export const METRIC_CONFIG: Record<MetricKey, MetricConfig> = {
     code:    "BLOOD_GLUCOSE",
     context: "FASTING",
     inputs: [
-      { field: "value1", label: "Blood Glucose", placeholder: "e.g. 90", unit: "mg/dL" },
+      { field: "value1", label: "Blood Glucose", placeholder: "e.g. 90", unit: "mg/dL", min: 40, max: 500 },
     ],
     formatValue: (v1) => `${v1} mg/dL`,
     parseValue:  (d) => ({ value1: d.replace(" mg/dL", "").trim() }),
@@ -166,7 +168,7 @@ export const METRIC_CONFIG: Record<MetricKey, MetricConfig> = {
     code:    "BLOOD_GLUCOSE",
     context: "POST_PRANDIAL",
     inputs: [
-      { field: "value1", label: "Blood Glucose", placeholder: "e.g. 140", unit: "mg/dL" },
+      { field: "value1", label: "Blood Glucose", placeholder: "e.g. 140", unit: "mg/dL", min: 40, max: 500 },
     ],
     formatValue: (v1) => `${v1} mg/dL`,
     parseValue:  (d) => ({ value1: d.replace(" mg/dL", "").trim() }),

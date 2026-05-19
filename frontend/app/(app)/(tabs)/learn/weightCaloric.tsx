@@ -268,10 +268,7 @@ const styles = StyleSheet.create({
     gap: 12,
     marginRight: 20,
   },
-  sceneImage: {
-    width: 120,
-    height: 120,
-  },
+  sceneImage: { width: 120, height: 120, resizeMode: "contain" },
   chat: {
     gap: 16,
   },

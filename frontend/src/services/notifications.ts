@@ -12,6 +12,16 @@ Notifications.setNotificationHandler({
   }),
 });
 
+// ── Android notification channel (required for Android 8+) ───────────────────
+if (Platform.OS === 'android') {
+  Notifications.setNotificationChannelAsync('medication-reminders', {
+    name: 'Medication Reminders',
+    importance: Notifications.AndroidImportance.HIGH,
+    sound: 'default',
+    vibrationPattern: [0, 250, 250, 250],
+  });
+}
+
 // ── Request permission ────────────────────────────────────────────────────────
 export async function requestNotificationPermission(): Promise<boolean> {
   if (Platform.OS === 'web') return false;
@@ -52,8 +62,9 @@ export async function scheduleAllReminders(): Promise<void> {
         content: {
           title: '💊 Medication Reminder',
           body:  `Time to take ${reminder.medicationName}`,
-          sound: true,
+          sound: 'default',
           data:  { reminderId: reminder.id },
+          ...(Platform.OS === 'android' && { channelId: 'medication-reminders' }),
         },
         trigger: {
           type:    Notifications.SchedulableTriggerInputTypes.DAILY,

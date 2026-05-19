@@ -3,7 +3,6 @@ package com.merabp.healthcare.dto;
 import com.merabp.healthcare.model.GlucoseContext;
 import com.merabp.healthcare.model.ObservationCode;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
@@ -27,7 +26,7 @@ public class ObservationRequestDTO {
     private GlucoseContext context;
 
     @NotNull(message = "Effective date-time is required")
-    @PastOrPresent(message = "Effective date-time cannot be in the future")
+    @com.fasterxml.jackson.annotation.JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime effectiveDateTime;
 
     @Size(max = 500, message = "Notes must not exceed 500 characters")

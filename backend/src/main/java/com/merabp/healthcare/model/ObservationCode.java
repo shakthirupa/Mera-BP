@@ -3,8 +3,8 @@ package com.merabp.healthcare.model;
 public enum ObservationCode {
 
     //                        unit1    unit2    v1Min   v1Max   v2Min   v2Max
-    HEART_RATE    ("bpm",     null,    40.0,   200.0,   null,   null),
-    BLOOD_PRESSURE("mmHg",   "mmHg",  60.0,   200.0,   40.0,  130.0),  // systolic / diastolic
+    HEART_RATE    ("bpm",     null,     0.0,   999.0,   null,   null),
+    BLOOD_PRESSURE("mmHg",   "mmHg",   0.0,   999.0,    0.0,  999.0),  // systolic / diastolic
     BLOOD_GLUCOSE ("mg/dL",   null,   40.0,   500.0,   null,   null),
     HBA1C         ("%",       null,    3.0,    15.0,    null,   null);
 

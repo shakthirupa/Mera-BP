@@ -19,7 +19,7 @@
           "autoVerify": true,
           "data": [
             {
-              "scheme": "com.googleusercontent.apps.1010196405034-fkb5he649cfqm3j3ten5vvpmn4qnb5h5"
+              "scheme": "com.googleusercontent.apps.1010196405034-krrn1bcf175jrklnmfplpb2l12pk8lpv"
             }
           ],
           "category": [
@@ -45,7 +45,12 @@
     "plugins": [
       "expo-router",
       "expo-web-browser",
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "defaultChannel": "medication-reminders"
+        }
+      ],
       [
         "expo-splash-screen",
         {

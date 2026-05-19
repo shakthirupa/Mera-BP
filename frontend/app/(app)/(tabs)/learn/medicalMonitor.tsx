@@ -272,18 +272,9 @@ const styles = StyleSheet.create({
     gap: 12,
     marginLeft: 20,
   },
-  sceneImage: {
-    width: 130,
-    height: 130,
-  },
-  sceneImageRect: {
-    width: 140,
-    height: 140,
-  },
-  sceneImageSmall: {
-    width: 140,
-    height: 140,
-  },
+  sceneImage:      { width: 120, height: 120, resizeMode: "contain" },
+  sceneImageRect:  { width: 120, height: 120, resizeMode: "contain" },
+  sceneImageSmall: { width: 120, height: 120, resizeMode: "contain" },
   patientBubble: {
     backgroundColor: "rgba(42, 127, 255, 0.08)",
     borderRadius: 24,
