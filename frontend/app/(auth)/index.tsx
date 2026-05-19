@@ -124,9 +124,9 @@ export default function LoginScreen() {
       }
       const result = await googleAuth();
       if (!result) { setGoogleLoading(false); return; }
-      const res  = await fetch(API.GOOGLE_CODE, {
+      const res  = await fetch(API.GOOGLE, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(result),
+        body: JSON.stringify({ idToken: result.idToken }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Google login failed');
