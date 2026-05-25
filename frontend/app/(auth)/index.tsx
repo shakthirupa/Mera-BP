@@ -1,13 +1,14 @@
 import { API } from "@/src/constants/api";
 import { COLORS } from "@/src/constants/theme";
 import { useSignup } from "@/src/context/SignupContext";
-import { googleAuth, googleAuthRedirect, getGoogleAuthResult, getSavedAccounts, saveAccount, SavedAccount } from "@/src/services/google";
+import { googleAuth, getSavedAccounts, saveAccount, googleAuthRedirect, getGoogleAuthResult, SavedAccount } from "@/src/services/google";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState, useEffect } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
   Image,
   ImageBackground,
   Keyboard,
@@ -23,6 +24,8 @@ import {
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { useAuth } from "../../src/providers/AuthContext";
 import { loginWithEmail, loginWithPhone } from "../../src/services/api";
+
+const { height } = Dimensions.get('window');
 
 export default function LoginScreen() {
 
@@ -107,7 +110,15 @@ export default function LoginScreen() {
         return;
       }
     } catch (error: any) {
-      Alert.alert("Login Failed", "Please check your credentials.");
+      const msg = error.message || '';
+      if (msg.toLowerCase().includes('not found') || msg.toLowerCase().includes('no account') || msg.toLowerCase().includes('invalid')) {
+        Alert.alert('Login Failed', 'No account found with these credentials. Please sign up.', [
+          { text: 'Sign Up', onPress: () => router.replace('/(auth)/register') },
+          { text: 'Try Again', style: 'cancel' }
+        ]);
+      } else {
+        Alert.alert('Login Failed', msg || 'Please check your credentials.');
+      }
       console.error(error);
     } finally {
       setLoading(false);
@@ -122,11 +133,11 @@ export default function LoginScreen() {
         await googleAuthRedirect();
         return;
       }
-      const result = await googleAuth();
-      if (!result) { setGoogleLoading(false); return; }
+      const idToken = await googleAuth();
+      if (!idToken) { setGoogleLoading(false); return; }
       const res  = await fetch(API.GOOGLE, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken: result.idToken }),
+        body: JSON.stringify({ idToken }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Google login failed');
@@ -134,14 +145,15 @@ export default function LoginScreen() {
         if (data.name && data.email) await saveAccount({ name: data.name, email: data.email });
         await signIn(data.accessToken, data.refreshToken);
       } else if (data.onboardingToken) {
-        resetSignup();
-        setSignupData({ fullName: data.name, onboardingToken: data.onboardingToken });
-        router.push('/(auth)/register/onboarding');
+        // No account found — on login page show error instead of going to signup
+        Alert.alert('No Account Found', 'No account exists for this Google account. Please sign up first.', [
+          { text: 'Sign Up', onPress: () => router.replace('/(auth)/register') }
+        ]);
       } else {
         throw new Error('Invalid server response');
       }
     } catch (error: any) {
-      Alert.alert('Google Authentication Failed', error.message);
+      Alert.alert('Google Authentication Failed', `Code: ${error?.code}\n${error?.message}`);
     } finally {
       setGoogleLoading(false);
     }
@@ -362,21 +374,20 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
     container: {
     flex: 1,
-    paddingTop: 40
   },
   scrollContent: {
     flexGrow:      1,
-    padding:       20,
-    paddingBottom: 80,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
   },
   logoContainer: {
     alignItems: "center",
-    marginBottom: 20,
-    marginTop: 60,
+    marginBottom: height * 0.02,
+    marginTop: height * 0.06,
   },
   logo: {
-    width: 90,
-    height: 90,
+    width: height * 0.1,
+    height: height * 0.1,
   },
   appNameContainer: {
     flexDirection: "row",

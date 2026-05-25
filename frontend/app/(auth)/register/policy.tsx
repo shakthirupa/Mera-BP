@@ -90,20 +90,56 @@ export default function TermsAndPolicy() {
             <Ionicons name="chevron-back" size={24} color={"#111"} />
           </TouchableOpacity>
           <View>
-            <Text style={styles.mainTitle}>Terms and Privacy</Text>
-            <Text style={styles.dateText}>Last Updated: October 2023</Text>
+            <Text style={styles.mainTitle}>Terms, Privacy & Consent</Text>
+            <Text style={styles.dateText}>Last Updated: May 2025</Text>
           </View>
         </View>
 
+        {/* ── Terms & Conditions Card ── */}
         <View style={styles.card}>
-
           <View style={styles.sectionBlock}>
             <View style={styles.sectionHeader}>
               <Ionicons name="document-text-outline" size={20} color="#2563EB" />
-              <Text style={styles.sectionTitle}>1. Introduction</Text>
+              <Text style={styles.sectionTitle}>1. Purpose of the Application</Text>
             </View>
             <Text style={styles.bodyText}>
-              Welcome to Mera BP. By accessing or using our hypertension care application, you agree to be bound by these Terms of Service and our Privacy Policy.
+              This application provides health education, lifestyle guidance, and tools to track selected health information such as blood pressure, weight, physical activity, and medication reminders. The information provided is intended for education and self-management support only and does not replace medical advice, diagnosis, or treatment from a qualified healthcare professional.
+            </Text>
+          </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.sectionBlock}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="person-outline" size={20} color="#2563EB" />
+              <Text style={styles.sectionTitle}>2. Eligibility</Text>
+            </View>
+            <Text style={styles.bodyText}>
+              Users must be 18 years or older or use the application under the supervision of a guardian. By registering, you confirm that the information you provide is accurate to the best of your knowledge.
+            </Text>
+          </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.sectionBlock}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="list-outline" size={20} color="#2563EB" />
+              <Text style={styles.sectionTitle}>3. Information We Collect</Text>
+            </View>
+            <Text style={styles.bodyText}>
+              The application may collect basic personal information (such as name, age, gender, and contact details) and health-related information (such as blood pressure readings, weight, physical activity, medication adherence, and lifestyle information). Basic device and app usage information may also be collected to ensure proper functioning of the application.
+            </Text>
+          </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.sectionBlock}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="analytics-outline" size={20} color="#2563EB" />
+              <Text style={styles.sectionTitle}>4. Use of Information</Text>
+            </View>
+            <Text style={styles.bodyText}>
+              Collected information is used to provide health education, reminders, and personal health tracking. It may also be used to improve the application and support health research or program evaluation. Whenever possible, research analyses will use anonymized or de-identified data.
             </Text>
           </View>
 
@@ -112,23 +148,34 @@ export default function TermsAndPolicy() {
           <View style={styles.sectionBlock}>
             <View style={styles.sectionHeader}>
               <Ionicons name="shield-checkmark-outline" size={20} color="#2563EB" />
-              <Text style={styles.sectionTitle}>2. Health Data Privacy</Text>
+              <Text style={styles.sectionTitle}>5. Confidentiality and Data Protection</Text>
             </View>
-            <Text style={styles.bodyText}>We take your health privacy seriously. We collect blood pressure readings, medication schedules, and other relevant health metrics to provide personalized care.</Text>
-            <Text style={styles.bodyText}>- Data is encrypted end-to-end.</Text>
-            <Text style={styles.bodyText}>- We do not sell your personal health data to third parties.</Text>
-            <Text style={styles.bodyText}>- You can request data deletion at any time.</Text>
+            <Text style={styles.bodyText}>
+              Your information will be stored in secure systems and accessed only by authorized personnel. Reasonable safeguards are used to protect privacy and confidentiality. However, no digital system can guarantee absolute security.
+            </Text>
           </View>
 
           <View style={styles.divider} />
 
           <View style={styles.sectionBlock}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="finger-print-outline" size={20} color="#2563EB" />
-              <Text style={styles.sectionTitle}>3. User Account</Text>
+              <Ionicons name="share-social-outline" size={20} color="#2563EB" />
+              <Text style={styles.sectionTitle}>6. Data Sharing</Text>
             </View>
             <Text style={styles.bodyText}>
-              You are responsible for maintaining the confidentiality of your account credentials. You agree to notify us immediately of any unauthorized use of your account.
+              Information may be shared with authorized healthcare providers or project staff when necessary for health support or program implementation. Data may also be used in aggregated or anonymized form for research or reporting purposes. Personal information will not be sold or used for commercial marketing.
+            </Text>
+          </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.sectionBlock}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="hand-left-outline" size={20} color="#2563EB" />
+              <Text style={styles.sectionTitle}>7. Voluntary Participation</Text>
+            </View>
+            <Text style={styles.bodyText}>
+              Use of this application is voluntary. You may stop using the app or withdraw consent at any time. Choosing not to use the application will not affect your access to routine healthcare services.
             </Text>
           </View>
 
@@ -137,23 +184,41 @@ export default function TermsAndPolicy() {
           <View style={styles.sectionBlock}>
             <View style={styles.sectionHeader}>
               <Ionicons name="alert-circle-outline" size={20} color="#F59E0B" />
-              <Text style={styles.sectionTitle}>4. Medical Disclaimer</Text>
+              <Text style={styles.sectionTitle}>8. Limitations</Text>
             </View>
             <Text style={styles.bodyText}>
-              Mera BP is an informational tool and does not constitute medical advice. Always consult with a qualified healthcare professional before making medical decisions.
+              This application does not provide medical diagnosis and should not be used during medical emergencies. Users should consult qualified healthcare professionals for medical concerns.
             </Text>
           </View>
 
-          <View style={styles.contactBlock}>
-            <Text style={styles.contactLabel}>Questions?</Text>
-            <Text style={styles.contactLink}>support@merabp.com</Text>
+          <View style={styles.divider} />
+
+          <View style={styles.sectionBlock}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="call-outline" size={20} color="#2563EB" />
+              <Text style={styles.sectionTitle}>9. Contact Information</Text>
+            </View>
+            <Text style={styles.bodyText}>
+              For questions about the application or your data, please contact: Mera BP Support, support@merabp.com
+            </Text>
           </View>
+        </View>
+
+        {/* ── User Consent Card ── */}
+        <View style={[styles.card, { marginTop: 16 }]}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="checkmark-circle-outline" size={20} color="#2563EB" />
+            <Text style={styles.sectionTitle}>User Consent Statement</Text>
+          </View>
+          <Text style={[styles.bodyText, { marginTop: 8, marginBottom: 20 }]}>
+            By selecting 'I Agree', you confirm that you have read and understood these terms and voluntarily consent to the collection and secure storage of your health information as described above.
+          </Text>
 
           <TouchableOpacity style={styles.checkboxContainer} onPress={() => setIsAccepted(!isAccepted)}>
             <View style={[styles.checkbox, isAccepted && styles.checkboxChecked]}>
               {isAccepted && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
             </View>
-            <Text style={styles.checkboxText}>I have read and agree to the Terms and Privacy Policy</Text>
+            <Text style={styles.checkboxText}>I have read and understood the Terms of Use, Privacy Notice, and User Consent Statement, and I voluntarily agree.</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -163,10 +228,9 @@ export default function TermsAndPolicy() {
           >
             {signing
               ? <ActivityIndicator color="#fff" />
-              : <Text style={styles.acceptText}>I Accept and Continue</Text>
+              : <Text style={styles.acceptText}>I Agree and Continue</Text>
             }
           </TouchableOpacity>
-
         </View>
       </ScrollView>
     </ImageBackground>
@@ -186,9 +250,7 @@ const styles = StyleSheet.create({
   sectionTitle:         { fontSize: 16, fontWeight: "700", color: "#0F172A", marginLeft: 8 },
   bodyText:             { fontSize: 14, color: "#64748B", lineHeight: 22, marginBottom: 4, textAlign: "justify" },
   divider:              { height: 1, backgroundColor: "#F1F5F9", marginVertical: 20 },
-  contactBlock:         { alignItems: "center", marginTop: 10, marginBottom: 25 },
-  contactLabel:         { fontSize: 14, color: "#64748B", marginBottom: 4 },
-  contactLink:          { fontSize: 16, color: "#2563EB", fontWeight: "600" },
+
   acceptButton:         { backgroundColor: "#2563EB", borderRadius: 32, paddingVertical: 14, alignItems: "center", marginTop: 10 },
   acceptButtonDisabled: { opacity: 0.7 },
   acceptText:           { color: "#FFFFFF", fontSize: 16, fontWeight: "600" },

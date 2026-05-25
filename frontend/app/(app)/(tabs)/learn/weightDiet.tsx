@@ -13,7 +13,7 @@ export default function WeightDiet() {
     };
   }, []);
 
-  const speak = (text, isDoctor = false) => {
+  const speak = (text: string, isDoctor = false) => {
     Speech.stop();
     Speech.speak(text, { 
       rate: 0.9, 

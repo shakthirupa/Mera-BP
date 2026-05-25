@@ -22,7 +22,7 @@ model = AutoModelForCausalLM.from_pretrained(model_name)
 print("Loading dataset...")
 raw_dataset = load_dataset(
     "json",
-    data_files="hypertension_chatbot_dataset_1000.json"
+    data_files="hypertension_dataset_clean.json"
 )
 
 def format_example(example):

@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
   Image,
   ImageBackground,
   Keyboard,
@@ -22,6 +23,7 @@ import {
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
+const { height } = Dimensions.get('window');
 const BASE_URL = API.LOGIN_EMAIL.split('/auth')[0];
 
 interface FormErrors {
@@ -99,7 +101,9 @@ export default function RegisterScreen() {
       .then(async ({ res, data }) => {
         if (!res.ok) throw new Error(data.message || 'Google signup failed');
         if (data.accessToken && data.refreshToken) {
-          await signIn(data.accessToken, data.refreshToken);
+          Alert.alert('Account Already Exists', 'You already have an account. Please login instead.', [
+            { text: 'Go to Login', onPress: () => router.replace('/(auth)') }
+          ]);
         } else if (data.onboardingToken) {
           resetSignup();
           setSignupData({ fullName: data.name, onboardingToken: data.onboardingToken });
@@ -170,7 +174,10 @@ export default function RegisterScreen() {
       if (!res.ok) throw new Error(data.message || "Google signup failed");
 
       if (data.accessToken && data.refreshToken) {
-        await signIn(data.accessToken, data.refreshToken);
+        // Existing account — on signup page this means they already have an account
+        Alert.alert('Account Already Exists', 'You already have an account. Please login instead.', [
+          { text: 'Go to Login', onPress: () => router.replace('/(auth)') }
+        ]);
       } else if (data.onboardingToken) {
         setSignupData({ fullName: data.name, onboardingToken: data.onboardingToken });
         router.push("/(auth)/register/onboarding");
@@ -194,24 +201,9 @@ export default function RegisterScreen() {
         await googleAuthRedirect();
         return;
       }
-      const result = await googleAuth();
-      if (!result) { setSigningUp(false); setSignMethod(null); return; }
-      const res = await fetch(API.GOOGLE_CODE, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(result),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Google signup failed");
-      if (data.accessToken && data.refreshToken) {
-        await signIn(data.accessToken, data.refreshToken);
-      } else if (data.onboardingToken) {
-        resetSignup();
-        setSignupData({ fullName: data.name, onboardingToken: data.onboardingToken });
-        router.push("/(auth)/register/onboarding");
-      } else {
-        throw new Error("Invalid server response");
-      }
+      const idToken = await googleAuth();
+      if (!idToken) { setSigningUp(false); setSignMethod(null); return; }
+      await handleGoogleToken(idToken);
     } catch (error: any) {
       Alert.alert("Google Authentication Failed", error.message);
     } finally {
@@ -385,21 +377,20 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 40
   },
   scrollContent: {
     flexGrow:      1,
-    padding:       20,
-    paddingBottom: 80,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
   },
   logoContainer: {
     alignItems:   "center",
-    marginBottom: 20,
-    marginTop:    60,
+    marginBottom: height * 0.02,
+    marginTop:    height * 0.06,
   },
   logo: {
-    width:  90,
-    height: 90,
+    width:  height * 0.1,
+    height: height * 0.1,
   },
   appNameContainer: {
     flexDirection: "row",

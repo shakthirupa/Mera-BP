@@ -15,6 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -41,6 +42,7 @@ export default function ChatbotScreen() {
   const [input,    setInput]    = useState("");
   const [loading,  setLoading]  = useState(false);
   const listRef = useRef<FlatList>(null);
+  const insets = useSafeAreaInsets();
 
   const sendMessage = async (text?: string) => {
     const content = (text ?? input).trim();
@@ -183,7 +185,7 @@ const renderMessage = ({ item }: { item: Message }) => {
         )}
 
         {/* Input */}
-        <View style={styles.inputBar}>
+        <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 16) }]}>
           <TextInput
             style={styles.input}
             value={input}
@@ -217,8 +219,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 20,
-    marginTop: 40,
-    paddingVertical: 14,
+    paddingTop: 50,
+    paddingBottom: 14,
     gap: 20,
   },
   headerTitle:      { fontSize: 18, fontWeight: "600", color: "#0F172A" },
@@ -241,7 +243,7 @@ bubbleRow: { flexDirection: "row", alignItems: "flex-start", marginBottom: 20, g
   suggestions:        { width: "100%", gap: 10 },
   suggestionChip:     { flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "rgba(255,255,255,0.95)", borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 12, padding: 14 },
   suggestionText:     { fontSize: 14, color: "#2563EB", fontWeight: "500", flex: 1 },
-  inputBar:           { flexDirection: "row", alignItems: "flex-end", gap: 10, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 20 },
+  inputBar: { flexDirection: "row", alignItems: "flex-end", gap: 10, paddingHorizontal: 20, paddingTop: 10 },
   input:              { flex: 1, backgroundColor: "#fff", borderRadius: 26, paddingHorizontal: 20, paddingVertical: 12, fontSize: 15, color: "#111827", maxHeight: 100, borderWidth: 1, borderColor: "#E5E7EB" },
   sendBtn:            { width: 44, height: 44, borderRadius: 22, backgroundColor: "#2563EB", alignItems: "center", justifyContent: "center" },
   sendBtnDisabled:    { opacity: 0.5 },

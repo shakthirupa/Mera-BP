@@ -5,6 +5,7 @@ import * as SplashScreen from "expo-splash-screen";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect } from "react";
 import { StatusBar } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthProvider } from "../src/providers/AuthContext";
 
 SplashScreen.preventAutoHideAsync();
@@ -35,11 +36,13 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
-    <AuthProvider>
-      <SignupProvider>
-        <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-        <RootLayoutNav />
-      </SignupProvider>
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <SignupProvider>
+          <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+          <RootLayoutNav />
+        </SignupProvider>
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }

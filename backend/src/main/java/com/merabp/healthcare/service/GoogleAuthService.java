@@ -135,14 +135,11 @@ public class GoogleAuthService {
 
         if (byEmail.isPresent()) {
             Patient patient = byEmail.get();
-
-            // Linking is safe — Google already verified this email
             patient.setGoogleId(googleId);
             patient.setAuthProvider(
                     patient.getAuthProvider() == AuthProvider.EMAIL
                             ? AuthProvider.BOTH
                             : patient.getAuthProvider());
-
             return issueTokenPair("Google account linked. Login successful.", patient);
         }
 

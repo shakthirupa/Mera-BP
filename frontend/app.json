@@ -19,13 +19,10 @@
           "autoVerify": true,
           "data": [
             {
-              "scheme": "com.googleusercontent.apps.1010196405034-fkb5he649cfqm3j3ten5vvpmn4qnb5h5"
+              "scheme": "com.googleusercontent.apps.1010196405034-uilugkvhhn1dkr4g39v7mepmd0b0endv"
             }
           ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
+          "category": ["BROWSABLE", "DEFAULT"]
         }
       ],
       "adaptiveIcon": {
@@ -45,6 +42,7 @@
     "plugins": [
       "expo-router",
       "expo-web-browser",
+      "@react-native-google-signin/google-signin",
       [
         "expo-notifications",
         {
@@ -70,10 +68,11 @@
       "typedRoutes": true,
       "reactCompiler": true
     },
+    "owner": "shakthirupag1",
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "e9c92241-a4c3-4dd8-b700-10ed5b6e45a8"
+        "projectId": "289c06e9-a8b9-463a-81e6-738489e9920e"
       }
     }
   }
