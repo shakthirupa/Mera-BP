@@ -73,12 +73,12 @@ public class ChatService {
 
     private static final Set<String> STOPWORDS = Set.of(
         "the","and","for","are","but","not","you","all","can","her","was","one",
-        "our","out","day","get","has","him","his","how","its","may","new","now",
-        "old","see","two","way","who","boy","did","its","let","put","say","she",
+        "our","out","day","get","has","him","his","how","may","new","now",
+        "old","see","two","way","who","boy","did","let","put","say","she",
         "too","use","what","with","this","that","have","from","they","will","your",
-        "been","does","each","from","into","more","some","than","them","then",
-        "when","also","just","like","most","over","such","take","than","very",
-        "well","were","what","which","while","about","after","could","other",
+        "been","does","each","into","more","some","than","them","then",
+        "when","also","just","like","most","over","such","take","very",
+        "well","were","which","while","about","after","could","other",
         "their","there","these","those","would","should","being","every","given",
         "help","high","blood","pressure","hypertension"
     );
