@@ -51,7 +51,7 @@ public class SecurityConfig {
                         // Public — no token needed
                         // /auth/google and /auth/google/complete are both public
                         // because the onboarding token is validated inside the service
-                        .requestMatchers("/auth/**", "/chat", "/health", "/").permitAll()
+                        .requestMatchers("/auth/**", "/health", "/").permitAll()
 
                         // Everything else requires a valid SESSION JWT
                         .anyRequest().authenticated()
