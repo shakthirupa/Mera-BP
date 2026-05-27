@@ -7,6 +7,7 @@ import com.merabp.healthcare.model.ObservationCode;
 import com.merabp.healthcare.model.Patient;
 import com.merabp.healthcare.repository.MedicationRepository;
 import com.merabp.healthcare.repository.ObservationRepository;
+import jakarta.transaction.Transactional;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
@@ -18,12 +19,21 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.Map;
 
 @Service
 public class ChatService {
 
     @Value("${groq.api-key}")
     private String groqApiKey;
+
+    @Value("${huggingface.api-key}")
+    private String hfApiKey;
+
+    @Value("${local.model.url:http://localhost:8000}")
+    private String localModelUrl;
+
+    private static final String HF_MODEL = "shakthirupan/bandhu-hypertension-lora";
 
     private final ObservationRepository observationRepo;
     private final MedicationRepository  medicationRepo;
@@ -42,10 +52,12 @@ public class ChatService {
     public void loadDataset() {
         try {
             var resource = new ClassPathResource("hypertension_dataset_clean.json");
-            List<Map<String, String>> raw = mapper.readValue(
-                resource.getInputStream(), new TypeReference<>() {});
+            var inputStream = resource.getInputStream();
+            var reader = new java.io.InputStreamReader(inputStream, java.nio.charset.StandardCharsets.UTF_8);
+            List<Map<String, String>> raw = mapper.readValue(reader, new TypeReference<>() {});
             dataset = raw.stream()
                 .map(m -> new QA(m.get("instruction"), m.get("response")))
+                .filter(qa -> qa.instruction() != null && qa.response() != null)
                 .collect(Collectors.toList());
             System.out.println("[ChatService] Loaded " + dataset.size() + " Q&As");
         } catch (Exception e) {
@@ -53,100 +65,287 @@ public class ChatService {
         }
     }
 
-    public String getResponse(String message, List<String> history, Patient patient) {
+    private static final Set<String> PERSONAL_KEYWORDS = Set.of(
+        "my", "mine", "i have", "i am", "i'm", "latest", "recent", "last",
+        "reading", "result", "report", "medication", "medicine", "my bp",
+        "my blood", "my heart", "my glucose", "my sugar", "my hba1c",
+        "should i", "am i", "is my", "are my", "what is my", "how is my"
+    );
+
+    private boolean isPersonalQuestion(String message) {
+        String lower = message.toLowerCase();
+        return PERSONAL_KEYWORDS.stream().anyMatch(lower::contains);
+    }
+
+    @Transactional
+    public String getResponse(String message, List<Map<String, String>> history, Patient patient) {
+        String patientContext = buildPatientContext(patient);
+        boolean personal = isPersonalQuestion(message);
+
+    @Transactional
+    public String getResponse(String message, List<Map<String, String>> history, Patient patient) {
+        String patientContext = buildPatientContext(patient);
+
+        // Layer 1 — fine-tuned model (HuggingFace Space)
         try {
-            String groqResponse = callGroq(message, history, patient);
-            if (groqResponse != null && !groqResponse.isBlank()) return groqResponse;
+            String localResponse = callLocalModel(message, patientContext);
+            if (localResponse != null && !localResponse.isBlank()) {
+                System.out.println("[ChatService] Answered by fine-tuned model");
+                return localResponse;
+            }
+        } catch (Exception e) {
+            System.err.println("[ChatService] Fine-tuned model failed: " + e.getMessage());
+        }
+
+        // Layer 2 — Groq API
+        try {
+            String groqResponse = callGroq(message, history, patientContext);
+            if (groqResponse != null && !groqResponse.isBlank()) {
+                System.out.println("[ChatService] Answered by Groq");
+                return groqResponse;
+            }
         } catch (Exception e) {
             System.err.println("[ChatService] Groq failed: " + e.getMessage());
         }
+
+        // Layer 3 — HuggingFace (general questions only)
+        if (!isPersonalQuestion(message)) {
+            try {
+                String hfResponse = callHuggingFace(message, patientContext);
+                if (hfResponse != null && !hfResponse.isBlank()) {
+                    System.out.println("[ChatService] Answered by HuggingFace");
+                    return hfResponse;
+                }
+            } catch (Exception e) {
+                System.err.println("[ChatService] HuggingFace failed: " + e.getMessage());
+            }
+        }
+
+        // Layer 4 — dataset keyword search
+        System.out.println("[ChatService] Answered by dataset fallback");
         return searchDataset(message);
     }
 
     private String buildPatientContext(Patient patient) {
-        if (patient == null) return "";
+        if (patient == null) {
+            System.err.println("[ChatService] buildPatientContext: patient is null");
+            return "No patient data available.";
+        }
 
         StringBuilder ctx = new StringBuilder();
-        ctx.append("Patient profile: ").append(patient.getName());
-        if (patient.getDateOfBirth() != null)
-            ctx.append(", DOB: ").append(patient.getDateOfBirth());
-        if (patient.getGender() != null)
-            ctx.append(", Gender: ").append(patient.getGender());
+        ctx.append("Patient: ").append(patient.getName());
+        if (patient.getDateOfBirth() != null) ctx.append(", DOB: ").append(patient.getDateOfBirth());
+        if (patient.getGender()      != null) ctx.append(", Gender: ").append(patient.getGender());
         ctx.append(".\n");
 
-        // Latest BP readings (last 5)
-        try {
-            var bpList = observationRepo
-                .findAllByPatientIdAndCodeOrderByEffectiveDateTimeDesc(
-                    patient.getId(), ObservationCode.BLOOD_PRESSURE);
-            if (!bpList.isEmpty()) {
-                ctx.append("Recent blood pressure readings (systolic/diastolic mmHg):\n");
-                bpList.stream().limit(5).forEach(o ->
-                    ctx.append("  - ").append(o.getEffectiveDateTime().toLocalDate())
-                       .append(": ").append(o.getValue1().intValue())
-                       .append("/").append(o.getValue2() != null ? o.getValue2().intValue() : "?")
-                       .append(" mmHg\n")
-                );
-            }
-        } catch (Exception ignored) {}
+        Long pid = patient.getId();
 
-        // Latest heart rate (last 3)
-        try {
-            var hrList = observationRepo
-                .findAllByPatientIdAndCodeOrderByEffectiveDateTimeDesc(
-                    patient.getId(), ObservationCode.HEART_RATE);
-            if (!hrList.isEmpty()) {
-                ctx.append("Recent heart rate readings:\n");
-                hrList.stream().limit(3).forEach(o ->
-                    ctx.append("  - ").append(o.getEffectiveDateTime().toLocalDate())
-                       .append(": ").append(o.getValue1().intValue()).append(" bpm\n")
-                );
-            }
-        } catch (Exception ignored) {}
+        // BP (last 5)
+        var bpList = observationRepo.findAllByPatientIdAndCodeOrderByEffectiveDateTimeDesc(pid, ObservationCode.BLOOD_PRESSURE);
+        if (!bpList.isEmpty()) {
+            ctx.append("Recent BP (systolic/diastolic mmHg):\n");
+            bpList.stream().limit(5).forEach(o ->
+                ctx.append("  - ").append(o.getEffectiveDateTime().toLocalDate())
+                   .append(": ").append(o.getValue1().intValue())
+                   .append("/").append(o.getValue2() != null ? o.getValue2().intValue() : "?").append(" mmHg")
+                   .append(o.getNotes() != null && !o.getNotes().isBlank() ? " (" + o.getNotes() + ")" : "")
+                   .append("\n")
+            );
+        } else {
+            ctx.append("No BP readings recorded yet.\n");
+        }
+
+        // Heart rate (last 3)
+        var hrList = observationRepo.findAllByPatientIdAndCodeOrderByEffectiveDateTimeDesc(pid, ObservationCode.HEART_RATE);
+        if (!hrList.isEmpty()) {
+            ctx.append("Recent heart rate:\n");
+            hrList.stream().limit(3).forEach(o ->
+                ctx.append("  - ").append(o.getEffectiveDateTime().toLocalDate())
+                   .append(": ").append(o.getValue1().intValue()).append(" bpm\n")
+            );
+        }
+
+        // Blood glucose (last 3)
+        var bgList = observationRepo.findAllByPatientIdAndCodeOrderByEffectiveDateTimeDesc(pid, ObservationCode.BLOOD_GLUCOSE);
+        if (!bgList.isEmpty()) {
+            ctx.append("Recent blood glucose:\n");
+            bgList.stream().limit(3).forEach(o ->
+                ctx.append("  - ").append(o.getEffectiveDateTime().toLocalDate())
+                   .append(": ").append(o.getValue1().intValue()).append(" mg/dL")
+                   .append(o.getContext() != null ? " (" + o.getContext() + ")" : "")
+                   .append("\n")
+            );
+        }
+
+        // HbA1c (last 2)
+        var hbList = observationRepo.findAllByPatientIdAndCodeOrderByEffectiveDateTimeDesc(pid, ObservationCode.HBA1C);
+        if (!hbList.isEmpty()) {
+            ctx.append("Recent HbA1c:\n");
+            hbList.stream().limit(2).forEach(o ->
+                ctx.append("  - ").append(o.getEffectiveDateTime().toLocalDate())
+                   .append(": ").append(o.getValue1()).append("%\n")
+            );
+        }
 
         // Medications
-        try {
-            var meds = medicationRepo.findAllByPatientIdOrderByCreatedAtDesc(patient.getId());
-            if (!meds.isEmpty()) {
-                ctx.append("Current medications:\n");
-                meds.forEach(m ->
-                    ctx.append("  - ").append(m.getName())
-                       .append(m.getPurpose() != null ? " (" + m.getPurpose() + ")" : "")
-                       .append("\n")
-                );
-            }
-        } catch (Exception ignored) {}
+        var meds = medicationRepo.findAllByPatientIdOrderByCreatedAtDesc(pid);
+        if (!meds.isEmpty()) {
+            ctx.append("Current medications:\n");
+            meds.forEach(m ->
+                ctx.append("  - ").append(m.getName())
+                   .append(m.getPurpose() != null ? " (" + m.getPurpose() + ")" : "")
+                   .append(m.getInstructions() != null ? " — " + m.getInstructions() : "")
+                   .append("\n")
+            );
+        } else {
+            ctx.append("No medications recorded.\n");
+        }
 
+        System.out.println("[ChatService] Patient context built for id=" + pid + ":\n" + ctx);
         return ctx.toString();
     }
 
-    private String callGroq(String message, List<String> history, Patient patient) throws Exception {
+    private String callLocalModel(String message, String patientContext) throws Exception {
+        Map<String, String> body = new LinkedHashMap<>();
+        body.put("message", message);
+        body.put("patient_context", patientContext);
+
+        String requestBody = mapper.writeValueAsString(body);
+
+        HttpClient client = HttpClient.newBuilder()
+            .connectTimeout(java.time.Duration.ofSeconds(5))
+            .build();
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(localModelUrl + "/chat"))
+            .header("Content-Type", "application/json")
+            .timeout(java.time.Duration.ofSeconds(60))
+            .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+            .build();
+
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() != 200) {
+            System.err.println("[ChatService] Local model error: " + response.statusCode());
+            return null;
+        }
+
+        JsonNode json = mapper.readTree(response.body());
+        return json.path("response").asText().trim();
+    }
+
+    private String callLocalModel(String message, String patientContext) throws Exception {
+        Map<String, String> body = new LinkedHashMap<>();
+        body.put("message", message);
+        body.put("patient_context", patientContext);
+
+        String requestBody = mapper.writeValueAsString(body);
+
+        HttpClient client = HttpClient.newBuilder()
+            .connectTimeout(java.time.Duration.ofSeconds(10))
+            .build();
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(localModelUrl + "/chat"))
+            .header("Content-Type", "application/json")
+            .timeout(java.time.Duration.ofSeconds(120))
+            .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+            .build();
+
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() != 200) {
+            System.err.println("[ChatService] Fine-tuned model error: " + response.statusCode());
+            return null;
+        }
+
+        JsonNode json = mapper.readTree(response.body());
+        return json.path("response").asText().trim();
+    }
+
+    private String callHuggingFace(String message, String patientContext) throws Exception {
+        String SYSTEM_PROMPT =
+            "You are Bandhu, a helpful hypertension health assistant for Indian patients. " +
+            "Answer only health, BP, diet, and medication related questions. " +
+            "Use the patient data below to personalise your answer.\n\nPATIENT DATA:\n" + patientContext;
+
+        String prompt =
+            "<|begin_of_text|>" +
+            "<|start_header_id|>system<|end_header_id|>\n" + SYSTEM_PROMPT + "<|eot_id|>" +
+            "<|start_header_id|>user<|end_header_id|>\n" + message + "<|eot_id|>" +
+            "<|start_header_id|>assistant<|end_header_id|>\n";
+
+        Map<String, Object> parameters = new LinkedHashMap<>();
+        parameters.put("max_new_tokens", 300);
+        parameters.put("temperature", 0.3);
+        parameters.put("do_sample", true);
+        parameters.put("return_full_text", false);
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("inputs", prompt);
+        body.put("parameters", parameters);
+
+        String requestBody = mapper.writeValueAsString(body);
+
+        HttpClient client = HttpClient.newBuilder()
+            .connectTimeout(java.time.Duration.ofSeconds(30))
+            .build();
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create("https://api-inference.huggingface.co/models/" + HF_MODEL))
+            .header("Content-Type", "application/json")
+            .header("Authorization", "Bearer " + hfApiKey)
+            .timeout(java.time.Duration.ofSeconds(60))
+            .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+            .build();
+
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() == 503) {
+            // Model is loading (cold start) — skip to Groq
+            System.err.println("[ChatService] HuggingFace model loading (503), falling back to Groq");
+            return null;
+        }
+        if (response.statusCode() != 200) {
+            System.err.println("[ChatService] HuggingFace error: " + response.statusCode() + " " + response.body());
+            return null;
+        }
+
+        JsonNode json = mapper.readTree(response.body());
+        if (json.isArray() && json.size() > 0) {
+            return json.get(0).path("generated_text").asText().trim();
+        }
+        return null;
+    }
+
+    private String callGroq(String message, List<Map<String, String>> history, String patientContext) throws Exception {
         List<Map<String, String>> messages = new ArrayList<>();
 
-        String patientContext = buildPatientContext(patient);
-
         messages.add(Map.of("role", "system", "content",
-            "You are Bandhu, a friendly hypertension health assistant for Indian patients. " +
-            "You have access to the patient's health data below. Use it to give personalised answers. " +
-            "Keep answers concise (3-5 sentences), practical, and relevant to Indian context. " +
+            "You are Bandhu, a hypertension health assistant for Indian patients. " +
+            "Answer ONLY questions about blood pressure, hypertension, medications, diet, and related health topics. " +
+            "For unrelated questions, politely say you can only help with hypertension and BP topics. " +
+            "Use the patient's data below to give personalised, accurate answers. " +
+            "Keep answers concise (3-5 sentences), factual, and practical. " +
             "Always recommend consulting a doctor for medical decisions. " +
-            "If asked about Indian foods (halwa, biryani, pickle, chai, etc.), give specific BP-related advice. " +
-            "Only answer health, diet, medication, or BP-related questions.\n\n" +
+            "IMPORTANT: If the patient asks about their readings or medications but the data shows none recorded, " +
+            "tell them clearly that no readings have been recorded yet and ask them to log their data in the app. " +
+            "Do NOT make up values or invent readings not present in the patient data.\n\n" +
             "PATIENT DATA:\n" + patientContext
         ));
 
         if (history != null) {
-            for (String h : history) {
-                messages.add(Map.of("role", "user", "content", h));
+            for (Map<String, String> turn : history) {
+                String role    = turn.getOrDefault("role", "user");
+                String content = turn.getOrDefault("content", "");
+                if (!content.isBlank() && (role.equals("user") || role.equals("assistant")))
+                    messages.add(Map.of("role", role, "content", content.substring(0, Math.min(content.length(), 400))));
             }
         }
         messages.add(Map.of("role", "user", "content", message));
 
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("model", "llama3-8b-8192");
+        body.put("model", "llama-3.3-70b-versatile");
         body.put("messages", messages);
         body.put("max_tokens", 300);
-        body.put("temperature", 0.7);
+        body.put("temperature", 0.3);
 
         String requestBody = mapper.writeValueAsString(body);
 

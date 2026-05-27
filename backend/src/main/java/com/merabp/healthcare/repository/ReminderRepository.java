@@ -42,6 +42,13 @@ public interface ReminderRepository extends JpaRepository<Reminder, Long> {
     List<Reminder> findAllByPatientIdOrderByReminderTimeAsc(
             @Param("patientId") Long patientId);
 
+    @Modifying
+    @Query("""
+            DELETE FROM Reminder r
+            WHERE r.medication.patient.id = :patientId
+            """)
+    void deleteAllByPatientId(@Param("patientId") Long patientId);
+
     // Duplicate time check on update — exclude current reminder
     @Query("""
             SELECT COUNT(r) > 0 FROM Reminder r

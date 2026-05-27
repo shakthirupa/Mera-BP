@@ -65,10 +65,10 @@ export default function ChatbotScreen() {
         },
         body: JSON.stringify({
           message: content,
-          history: messages
-            .filter(m => m.role === "user" && m.content.trim().length > 0)
-            .slice(-3)
-            .map(m => m.content.slice(0, 400))
+          history: updated
+            .slice(0, -1)          // exclude the message just sent
+            .slice(-6)             // last 3 turns (3 user + 3 assistant)
+            .map(m => ({ role: m.role, content: m.content.slice(0, 400) }))
         }),
       });
 

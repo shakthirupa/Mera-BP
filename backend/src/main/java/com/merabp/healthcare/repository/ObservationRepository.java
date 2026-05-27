@@ -3,8 +3,8 @@ package com.merabp.healthcare.repository;
 import com.merabp.healthcare.model.GlucoseContext;
 import com.merabp.healthcare.model.Observation;
 import com.merabp.healthcare.model.ObservationCode;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -21,7 +21,9 @@ public interface ObservationRepository extends JpaRepository<Observation, Long> 
 
     List<Observation> findAllByPatientIdAndCodeAndContextOrderByEffectiveDateTimeDesc(Long patientId, ObservationCode code, GlucoseContext context);
 
-    // Single observation — also checks patient ownership (prevents cross-patient access)
     Optional<Observation> findByIdAndPatientId(Long id, Long patientId);
 
+    @Modifying
+    @Query("DELETE FROM Observation o WHERE o.patient.id = :patientId")
+    void deleteAllByPatientId(@Param("patientId") Long patientId);
 }
