@@ -7,7 +7,7 @@ import uvicorn
 import os
 
 # ── Config ────────────────────────────────────────────────────────────────────
-MAX_NEW_TOKENS = 30
+MAX_NEW_TOKENS = 100
 TEMPERATURE    = 0.3
 
 # ── Load model ───────────────────────────────────────────────────────────────
@@ -65,13 +65,16 @@ def chat(req: ChatRequest):
 
     with torch.no_grad():
         outputs = model.generate(
-            input_ids      = inputs["input_ids"],
-            attention_mask = inputs["attention_mask"],
-            max_new_tokens = MAX_NEW_TOKENS,
-            temperature    = TEMPERATURE,
-            do_sample      = True,
-            pad_token_id   = tokenizer.eos_token_id,
-        )
+            input_ids=inputs["input_ids"],
+            attention_mask=inputs["attention_mask"],
+            max_new_tokens=80,
+            temperature=0.3,
+            do_sample=True,
+            top_p=0.9,
+            repetition_penalty=1.1,
+            pad_token_id=tokenizer.eos_token_id,
+            eos_token_id=tokenizer.eos_token_id,
+        )  
 
     new_tokens = outputs[0][inputs["input_ids"].shape[1]:]
     response   = tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
