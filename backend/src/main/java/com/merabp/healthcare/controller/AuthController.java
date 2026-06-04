@@ -97,6 +97,18 @@ public class AuthController {
         return ResponseEntity.ok(googleAuthService.handleGoogleCode(request));
     }
 
+    @PostMapping("/google/verify-otp")
+    public ResponseEntity<AuthResponseDTO> verifyGoogleOtp(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody VerifyForgotOtpRequestDTO request) {
+
+        if (authHeader == null || !authHeader.startsWith("Bearer "))
+            throw new RuntimeException("Missing token");
+
+        return ResponseEntity.ok(
+                googleAuthService.verifyGoogleOtp(authHeader.substring(7), request.getOtp()));
+    }
+
     // { onboardingToken, dateOfBirth, gender, termsAccepted }
     // 200 + JWT → account created, signed in
     // 401       → onboarding token expired, send back to login

@@ -8,10 +8,6 @@ import java.time.LocalDate;
 public class CompleteSignupRequestDTO {
 
 
-        @NotBlank(message = "Name is required")
-        @Size(max = 100, message = "Name must not exceed 100 characters")
-        private String name;
-
         @NotNull(message = "Date of birth is required")
         @PastOrPresent(message = "Date of birth must not be in the future")
         private LocalDate dateOfBirth;
@@ -42,9 +38,6 @@ public class CompleteSignupRequestDTO {
         public CompleteSignupRequestDTO() {}
 
         // Getters & Setters
-        public String getName()                                    { return name; }
-        public void setName(String name)                           { this.name = name; }
-
         public LocalDate getDateOfBirth()                          { return dateOfBirth; }
         public void setDateOfBirth(LocalDate dateOfBirth)          { this.dateOfBirth = dateOfBirth; }
 

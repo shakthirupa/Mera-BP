@@ -1,8 +1,9 @@
 import { API } from "@/src/constants/api";
 import { getAccessToken } from "@/src/services/tokenStorage";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -37,12 +38,32 @@ const SUGGESTED_QUESTIONS = [
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
+const CHAT_STORAGE_KEY = "chat_session_messages";
+
 export default function ChatbotScreen() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input,    setInput]    = useState("");
   const [loading,  setLoading]  = useState(false);
   const listRef = useRef<FlatList>(null);
   const insets = useSafeAreaInsets();
+
+  // Load messages for this login session on mount
+  useEffect(() => {
+    (async () => {
+      const token = await getAccessToken();
+      if (!token) return;
+      const key = `${CHAT_STORAGE_KEY}_${token.slice(-16)}`;
+      const saved = await AsyncStorage.getItem(key);
+      if (saved) setMessages(JSON.parse(saved));
+    })();
+  }, []);
+
+  const persistMessages = async (msgs: Message[]) => {
+    const token = await getAccessToken();
+    if (!token) return;
+    const key = `${CHAT_STORAGE_KEY}_${token.slice(-16)}`;
+    await AsyncStorage.setItem(key, JSON.stringify(msgs));
+  };
 
   const sendMessage = async (text?: string) => {
     const content = (text ?? input).trim();
@@ -51,6 +72,7 @@ export default function ChatbotScreen() {
     const userMsg: Message = { id: Date.now().toString(), role: "user", content };
     const updated = [...messages, userMsg];
     setMessages(updated);
+    persistMessages(updated);
     setInput("");
     setLoading(true);
     setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
@@ -75,10 +97,11 @@ export default function ChatbotScreen() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "Failed to get response");
 
-      setMessages(prev => [
-        ...prev,
-        { id: (Date.now() + 1).toString(), role: "assistant", content: data.message },
-      ]);
+      setMessages(prev => {
+        const next = [...prev, { id: (Date.now() + 1).toString(), role: "assistant" as const, content: data.message }];
+        persistMessages(next);
+        return next;
+      });
       setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
     } catch {
       setMessages(prev => [

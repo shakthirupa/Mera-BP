@@ -118,4 +118,10 @@ export async function deleteAccount(): Promise<void> {
     const data = await response.json();
     throw new Error(data.message || 'Failed to delete account.');
   }
+  // Clear local chat history for this session
+  if (token) {
+    const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+    const key = `chat_session_messages_${token.slice(-16)}`;
+    await AsyncStorage.removeItem(key);
+  }
 }

@@ -67,7 +67,6 @@ public class AuthService {
         }
 
         Patient patient = Patient.emailUser(
-                request.getName(),
                 request.getDateOfBirth(),
                 request.getGender(),
                 email,

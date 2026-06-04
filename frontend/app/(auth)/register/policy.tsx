@@ -1,6 +1,7 @@
 import { API } from "@/src/constants/api";
 import { useSignup } from "@/src/context/SignupContext";
 import { useAuth } from "@/src/providers/AuthContext";
+import { saveName } from "@/src/services/tokenStorage";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useState } from "react";
@@ -31,7 +32,6 @@ export default function TermsAndPolicy() {
     setSigning(true);
     try {
       const body = {
-        name: signupData.fullName,
         dateOfBirth: signupData.dob,
         gender: signupData.gender,
         password: signupData.password,
@@ -44,6 +44,7 @@ export default function TermsAndPolicy() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "Signup failed.");
+      if (signupData.fullName) await saveName(signupData.fullName);
       await signIn(data.accessToken, data.refreshToken);
     } catch (error: any) {
       Alert.alert("Signup Failed", error.message || "Something went wrong.");
@@ -57,7 +58,6 @@ export default function TermsAndPolicy() {
     setSigning(true);
     try {
       const body = {
-        name: signupData.fullName,
         dateOfBirth: signupData.dob,
         gender: signupData.gender,
         termsAccepted: isAccepted,
@@ -69,6 +69,7 @@ export default function TermsAndPolicy() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "Signup failed.");
+      if (signupData.fullName) await saveName(signupData.fullName);
       await signIn(data.accessToken, data.refreshToken);
     } catch (error: any) {
       Alert.alert("Signup Failed", error.message || "Something went wrong.");

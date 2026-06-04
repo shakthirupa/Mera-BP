@@ -12,9 +12,11 @@ import com.merabp.healthcare.dto.GoogleCodeRequestDTO;
 import com.merabp.healthcare.dto.GoogleCompleteRequestDTO;
 import com.merabp.healthcare.exception.BusinessRuleException;
 import com.merabp.healthcare.model.AuthProvider;
+import com.merabp.healthcare.model.OtpPurpose;
 import com.merabp.healthcare.model.Patient;
 import com.merabp.healthcare.repository.PatientRepository;
 import com.merabp.healthcare.security.JwtService;
+import com.merabp.healthcare.service.OtpService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -47,13 +49,16 @@ public class GoogleAuthService {
     private final PatientRepository patientRepo;
     private final JwtService jwtService;
     private final RefreshTokenService refreshTokenService;
+    private final OtpService otpService;
 
     public GoogleAuthService(PatientRepository patientRepo,
                              JwtService jwtService,
-                             RefreshTokenService refreshTokenService) {
+                             RefreshTokenService refreshTokenService,
+                             OtpService otpService) {
         this.patientRepo         = patientRepo;
         this.jwtService          = jwtService;
         this.refreshTokenService = refreshTokenService;
+        this.otpService          = otpService;
     }
 
     // ── STEP 1 (code flow) ────────────────────────────────────────────────────
@@ -116,39 +121,66 @@ public class GoogleAuthService {
 
         GoogleIdToken.Payload payload = verifyGoogleToken(request.getIdToken());
 
-        String googleId = payload.getSubject();  // stable unique Google user ID
+        String googleId = payload.getSubject();
         String email    = payload.getEmail();
         String name     = (String) payload.get("name");
 
-        // ── A: existing Google user — straight sign in ────────────────────────
-        Optional<Patient> byGoogleId =
-                patientRepo.findByGoogleIdAndDeletedFalse(googleId);
+        // Generate onboarding token carrying googleId + email + name
+        // Used after OTP verification to identify the user without re-verifying Google token
+        String pendingToken = jwtService.generateOnboardingToken(googleId, email, name);
 
+        // Send OTP to the Gmail address regardless of new/existing user
+        java.time.LocalDateTime expiresAt = otpService.generateAndSendOtp(email, OtpPurpose.GOOGLE_AUTH);
+
+        // Return pending token + expiry — frontend will verify OTP then call /google/verify-otp
+        AuthResponseDTO dto = new AuthResponseDTO();
+        dto.setStatus("NEEDS_GOOGLE_OTP");
+        dto.setMessage("OTP sent to your Gmail. Please verify.");
+        dto.setOnboardingToken(pendingToken);
+        dto.setOtpExpiresAt(expiresAt);
+        dto.setName(name);
+        return dto;
+    }
+
+    // ── STEP 1b — Verify Google OTP ───────────────────────────────────────────
+    // Called after user enters OTP sent to their Gmail
+    // If existing user → issue JWT (login)
+    // If new user      → return onboarding token for DOB/gender/T&C screens
+
+    @Transactional
+    public AuthResponseDTO verifyGoogleOtp(String pendingToken, String otp) {
+
+        if (!jwtService.isOnboardingTokenValid(pendingToken)) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED, "Session timed out. Please sign in with Google again.");
+        }
+
+        String googleId = jwtService.extractGoogleId(pendingToken);
+        String email    = jwtService.extractEmail(pendingToken);
+        String name     = jwtService.extractName(pendingToken);
+
+        // Verify the OTP
+        otpService.verifyOtp(email, otp, OtpPurpose.GOOGLE_AUTH);
+
+        // Existing Google user → login
+        Optional<Patient> byGoogleId = patientRepo.findByGoogleIdAndDeletedFalse(googleId);
         if (byGoogleId.isPresent()) {
             return issueTokenPair("Login successful.", byGoogleId.get());
         }
 
-        // ── B: email already registered via email/password — link accounts ────
-        // We never create a duplicate. We attach googleId to the existing record.
-        Optional<Patient> byEmail =
-                patientRepo.findByEmailAndDeletedFalse(email);
-
+        // Email linked to email/password account → link Google and login
+        Optional<Patient> byEmail = patientRepo.findByEmailAndDeletedFalse(email);
         if (byEmail.isPresent()) {
             Patient patient = byEmail.get();
             patient.setGoogleId(googleId);
             patient.setAuthProvider(
                     patient.getAuthProvider() == AuthProvider.EMAIL
-                            ? AuthProvider.BOTH
-                            : patient.getAuthProvider());
+                            ? AuthProvider.BOTH : patient.getAuthProvider());
             return issueTokenPair("Google account linked. Login successful.", patient);
         }
 
-        // ── C: new user — return short-lived onboarding token ──────────
-        // No Patient row created yet. Frontend must call /auth/google/complete.
-        String onboardingToken =
-                jwtService.generateOnboardingToken(googleId, email, name);
-
-        return AuthResponseDTO.onboarding(onboardingToken, name);
+        // New user → return onboarding token for DOB/gender/T&C
+        return AuthResponseDTO.onboarding(pendingToken, name);
     }
 
     // ── STEP 2 ────────────────────────────────────────────────────────────────
@@ -185,7 +217,6 @@ public class GoogleAuthService {
         }
 
         Patient patient = Patient.googleUser(
-                name,
                 request.getDateOfBirth(),
                 request.getGender(),
                 email,

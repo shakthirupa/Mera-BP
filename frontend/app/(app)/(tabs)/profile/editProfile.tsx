@@ -1,6 +1,7 @@
 import { API } from "@/src/constants/api";
 import { useAuth } from "@/src/providers/AuthContext";
 import { getAccessToken } from "@/src/services/tokenStorage";
+import { saveName } from "@/src/services/tokenStorage";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
@@ -49,11 +50,12 @@ export default function EditProfileScreen() {
       const response = await fetch(API.UPDATE_PROFILE, {
         method:  "PUT",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body:    JSON.stringify({ name: name.trim(), dateOfBirth: toApiDate(dob), gender }),
+        body:    JSON.stringify({ dateOfBirth: toApiDate(dob), gender }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "Failed to update profile");
-      setUser?.({ ...user!, ...data });
+      await saveName(name.trim());
+      setUser?.({ ...user!, ...data, name: name.trim() });
       router.back();
     } catch (error: any) {
       Alert.alert("Error", error.message || "Failed to update profile");

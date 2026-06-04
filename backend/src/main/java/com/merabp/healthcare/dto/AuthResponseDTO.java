@@ -14,7 +14,7 @@ public class AuthResponseDTO {
     private String refreshToken;
 
     private String onboardingToken;
-    private String name;
+    private String name;  // only used in onboarding response — never stored in DB
     private String status;
     private LocalDateTime otpExpiresAt;
 
@@ -58,7 +58,6 @@ public class AuthResponseDTO {
                                                        String refreshToken,
                                                        Patient patient) {
         AuthResponseDTO dto = withTokens(message, accessToken, refreshToken);
-        dto.name         = patient.getName();
         dto.email        = patient.getEmail();
         dto.phone        = patient.getPhone();
         dto.dateOfBirth  = patient.getDateOfBirth() != null ? patient.getDateOfBirth().toString() : null;
@@ -75,12 +74,13 @@ public class AuthResponseDTO {
     }
 
     // Onboarding required — new Google user, needs DOB + gender + T&C
+    // name is returned so frontend can cache it locally; it is never stored in DB
     public static AuthResponseDTO onboarding(String onboardingToken, String name) {
         AuthResponseDTO dto = new AuthResponseDTO();
         dto.status          = "NEEDS_ONBOARDING";
         dto.message         = "Please complete your profile to continue.";
         dto.onboardingToken = onboardingToken;
-        dto.name = name;
+        dto.name            = name;
         return dto;
     }
 
@@ -89,9 +89,9 @@ public class AuthResponseDTO {
     public String getAccessToken()     { return accessToken; }
     public String getRefreshToken()    { return refreshToken; }
     public String getOnboardingToken() { return onboardingToken; }
+    public String getName()            { return name; }
     public String getStatus()          { return status; }
     public LocalDateTime getOtpExpiresAt() { return otpExpiresAt; }
-    public String getName()            { return name; }
     public String getEmail()           { return email; }
     public String getPhone()           { return phone; }
     public String getDateOfBirth()     { return dateOfBirth; }

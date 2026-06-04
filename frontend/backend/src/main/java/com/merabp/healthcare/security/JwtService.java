@@ -56,6 +56,26 @@ public class JwtService {
                 .compact();
     }
 
+    public String generatePasswordResetToken(String email) {
+        return Jwts.builder()
+                .subject(email)
+                .claim("type", "RESET")
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + onboardingExpirationMs))
+                .signWith(getSigningKey())
+                .compact();
+    }
+
+    public boolean isPasswordResetTokenValid(String token) {
+        try {
+            Claims claims = extractClaims(token);
+            return "RESET".equals(claims.get("type", String.class))
+                    && !claims.getExpiration().before(new Date());
+        } catch (JwtException | IllegalArgumentException e) {
+            return false;
+        }
+    }
+
     public String generateSignupOnboardingToken(String email) {
         return Jwts.builder()
                 .subject(email)

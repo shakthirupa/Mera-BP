@@ -84,7 +84,6 @@ public class PatientService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Patient not found with id: " + id));
 
-        patient.setName(request.getName());
         patient.setDateOfBirth(request.getDateOfBirth());
         patient.setGender(request.getGender());
 
@@ -105,7 +104,7 @@ public class PatientService {
         // 2. Delete all observations (BP, heart rate, glucose, HbA1c)
         observationRepo.deleteAllByPatientId(id);
 
-        // 3. Delete all reminders + medications (reminders cascade from medications)
+        // 3. Delete reminders first (FK → medications), then medications
         reminderRepo.deleteAllByPatientId(id);
         medicationRepo.deleteAllByPatientId(id);
 
@@ -117,10 +116,7 @@ public class PatientService {
             otpRepo.deleteAllByEmail(patient.getPhone());
         }
 
-        // 5. Soft delete patient row + nullify unique fields so same email/phone can re-register
-        patient.setDeleted(true);
-        patient.setEmail(null);
-        patient.setPhone(null);
-        patient.setGoogleId(null);
+        // 5. Hard delete the patient row entirely
+        patientRepo.delete(patient);
     }
 }

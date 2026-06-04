@@ -10,7 +10,6 @@ import java.time.LocalDate;
 
 public class PatientResponseDTO {
 
-    private String name;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     private LocalDate dateOfBirth;
     private Gender gender;
@@ -23,7 +22,6 @@ public class PatientResponseDTO {
     // Static factory — keeps construction logic in one place
     public static PatientResponseDTO from(Patient patient) {
         PatientResponseDTO dto = new PatientResponseDTO();
-        dto.name        = patient.getName();
         dto.dateOfBirth = patient.getDateOfBirth();
         dto.gender      = patient.getGender();
         dto.email       = patient.getEmail();
@@ -34,7 +32,6 @@ public class PatientResponseDTO {
 
     // Getters (no setters — response is read-only)
 
-    public String getName() { return name; }
     public LocalDate getDateOfBirth() { return dateOfBirth; }
     public Gender getGender() { return gender; }
     public String getEmail() { return email; }

@@ -205,7 +205,7 @@ public class GoogleAuthService {
     private AuthResponseDTO issueTokenPair(String message, Patient patient) {
         String accessToken  = jwtService.generateToken(patient);
         String refreshToken = refreshTokenService.generateRefreshToken(patient);
-        return AuthResponseDTO.withTokens(message, accessToken, refreshToken);
+        return AuthResponseDTO.withTokensAndProfile(message, accessToken, refreshToken, patient);
     }
 
     // Verifies the Google ID token using Google's public keys

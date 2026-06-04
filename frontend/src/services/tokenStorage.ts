@@ -2,6 +2,7 @@ import * as SecureStore from 'expo-secure-store';
 
 const ACCESS_TOKEN_KEY  = 'accessToken';
 const REFRESH_TOKEN_KEY = 'refreshToken';
+const NAME_KEY          = 'userName';
 
 export async function saveTokens(
   accessToken: string,
@@ -22,4 +23,16 @@ export async function getRefreshToken(): Promise<string | null> {
 export async function clearTokens(): Promise<void> {
   await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
   await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+}
+
+export async function saveName(name: string): Promise<void> {
+  await SecureStore.setItemAsync(NAME_KEY, name);
+}
+
+export async function getName(): Promise<string | null> {
+  return SecureStore.getItemAsync(NAME_KEY);
+}
+
+export async function clearName(): Promise<void> {
+  await SecureStore.deleteItemAsync(NAME_KEY);
 }

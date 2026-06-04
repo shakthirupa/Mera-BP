@@ -23,8 +23,6 @@ import java.time.LocalDateTime;
 @Service
 public class AuthService {
 
-    private static final String TEMP_RESET_TOKEN = "abcd1234";
-
     private final PatientRepository patientRepo;
     private final OtpService otpService;
     private final BCryptPasswordEncoder passwordEncoder;
@@ -185,9 +183,10 @@ public class AuthService {
         findActivePatient(request.getEmail());
         otpService.verifyOtp(request.getEmail(), request.getOtp(), OtpPurpose.FORGOT_PASSWORD);
 
+        String resetToken = jwtService.generatePasswordResetToken(request.getEmail());
         return AuthResponseDTO.withToken(
                 "OTP verified. Use the reset token to set your new password.",
-                TEMP_RESET_TOKEN);
+                resetToken);
     }
 
     // ── FORGOT PASSWORD — RESET ───────────────────────────────────────────────
@@ -195,11 +194,16 @@ public class AuthService {
     @Transactional
     public AuthResponseDTO resetPassword(ResetPasswordRequestDTO request) {
 
-        Patient patient = findActivePatient(request.getEmail());
+        if (!jwtService.isPasswordResetTokenValid(request.getResetToken())) {
+            throw new BusinessRuleException("Invalid or expired reset token. Please start over.");
+        }
 
-        if (!TEMP_RESET_TOKEN.equals(request.getResetToken())) {
+        String emailFromToken = jwtService.extractEmail(request.getResetToken());
+        if (!emailFromToken.equals(request.getEmail())) {
             throw new BusinessRuleException("Invalid reset token.");
         }
+
+        Patient patient = findActivePatient(request.getEmail());
 
         if (passwordEncoder.matches(request.getNewPassword(), patient.getPasswordHash())) {
             throw new BusinessRuleException(

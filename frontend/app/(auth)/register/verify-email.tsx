@@ -1,6 +1,8 @@
 import { API } from "@/src/constants/api";
 import { COLORS } from "@/src/constants/theme";
 import { useSignup } from "@/src/context/SignupContext";
+import { useAuth } from "@/src/providers/AuthContext";
+import { saveName } from "@/src/services/tokenStorage";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -25,19 +27,15 @@ const RESEND_COOLDOWN = 90; // 1 minute 30 seconds
 
 export default function VerifyOtpScreen() {
   const { signupData, setSignupData } = useSignup();
+  const { signIn } = useAuth();
 
   // Read from context — set by register screen
   const isPhone    = signupData?.signupMethod==="phone" ? true : false;
+  const isGoogle   = signupData?.signupMethod==="google";
   const identifier = isPhone ? signupData?.phone : signupData?.email;
 
-  // Endpoints driven by isPhone
-  const SEND_URL   = isPhone
-    ? API.START_EMAIL_SIGNUP  // replace with phone endpoint when available
-    : API.START_EMAIL_SIGNUP;
-
-  const VERIFY_URL = isPhone
-    ? API.VERIFY_EMAIL_SIGNUP_OTP  // replace with phone endpoint when available
-    : API.VERIFY_EMAIL_SIGNUP_OTP;
+  const SEND_URL   = isPhone ? API.START_EMAIL_SIGNUP : API.START_EMAIL_SIGNUP;
+  const VERIFY_URL = isPhone ? API.VERIFY_EMAIL_SIGNUP_OTP : API.VERIFY_EMAIL_SIGNUP_OTP;
 
   // ── State ─────────────────────────────────────────────────────────────────
 
@@ -153,31 +151,46 @@ useEffect(() => {
 
   async function handleVerify() {
     if (!isOtpComplete || verifying || isExpired) return;
-
     Keyboard.dismiss();
     setVerifying(true);
-
     try {
       const code = otp.join("");
 
-      // Body uses email or phone key depending on isPhone
+      if (isGoogle) {
+        // Google OTP flow — call /auth/google/verify-otp with pending token
+        const response = await fetch(API.GOOGLE_VERIFY_OTP, {
+          method:  "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${signupData.onboardingToken}` },
+          body:    JSON.stringify({ otp: code }),
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || "OTP verification failed.");
+
+        if (data.accessToken && data.refreshToken) {
+          // Existing user — login complete
+          if (signupData.fullName) await saveName(signupData.fullName);
+          await signIn(data.accessToken, data.refreshToken);
+        } else if (data.status === 'NEEDS_ONBOARDING') {
+          // New user — go to onboarding
+          setSignupData({ onboardingToken: data.onboardingToken });
+          router.replace("/(auth)/register/onboarding");
+        }
+        return;
+      }
+
+      // Email / phone OTP flow
       const body = isPhone
         ? { phone: identifier, otp: code }
         : { email: identifier, otp: code };
-
       const response = await fetch(VERIFY_URL, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify(body),
       });
-
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "OTP verification failed.");
-
-      // Save onboarding token — policy screen will use it
       setSignupData({ onboardingToken: data.onboardingToken });
       router.replace("/(auth)/register/onboarding");
-
     } catch (error: any) {
       Alert.alert("Verification Failed", error.message || "Something went wrong.");
       clearOtp();
@@ -189,29 +202,26 @@ useEffect(() => {
   // ── Resend ────────────────────────────────────────────────────────────────
 
   async function handleResend() {
-
-      if (!canResend || resending) return;
-
+    if (!canResend || resending) return;
     setResending(true);
     try {
-      const body = isPhone
-        ? { phone: identifier }
-        : { email: identifier };
-
+      if (isGoogle) {
+        // Re-trigger Google auth to get a new OTP — call /auth/google with stored pending token
+        // We can't re-call Google SDK here, so just inform user to restart
+        Alert.alert("Resend not available", "Please go back and sign in with Google again to get a new OTP.");
+        return;
+      }
+      const body = isPhone ? { phone: identifier } : { email: identifier };
       const response = await fetch(SEND_URL, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify(body),
       });
-
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "Signup failed.");
-
       clearOtp();
       setSignupData({ otpExpiresAt: data.otpExpiresAt });
-
       Alert.alert("OTP Sent", `A new OTP has been sent to your ${isPhone ? "phone" : "email"}.`);
-
     } catch (error: any) {
       Alert.alert("Error", error.message || "Failed to resend OTP.");
     } finally {
@@ -244,9 +254,8 @@ useEffect(() => {
 
         {/* Header */}
         <View style={styles.logoContainer}>
-
           <Text style={styles.title}>
-            {isPhone ? "Phone Verification" : "Email Verification"}
+            {isGoogle ? "Gmail Verification" : isPhone ? "Phone Verification" : "Email Verification"}
           </Text>
         </View>
 
@@ -254,10 +263,10 @@ useEffect(() => {
         <View style={styles.card}>
 
           <Text style={styles.subtitle}>
-            Enter the OTP sent to your {isPhone ? "phone" : "email"}
+            Enter the OTP sent to your {isGoogle ? "Gmail" : isPhone ? "phone" : "email"}
           </Text>
 
-          <Text style={styles.identifier}>{identifier}</Text>
+          <Text style={styles.identifier}>{isGoogle ? signupData?.fullName ?? "Gmail" : identifier}</Text>
 
           {/* Timer */}
           <Text style={[styles.timer, isExpired && styles.timerExpired]}>

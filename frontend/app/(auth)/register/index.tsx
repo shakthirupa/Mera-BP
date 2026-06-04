@@ -173,14 +173,9 @@ export default function RegisterScreen() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Google signup failed");
 
-      if (data.accessToken && data.refreshToken) {
-        // Existing account — on signup page this means they already have an account
-        Alert.alert('Account Already Exists', 'You already have an account. Please login instead.', [
-          { text: 'Go to Login', onPress: () => router.replace('/(auth)') }
-        ]);
-      } else if (data.onboardingToken) {
-        setSignupData({ fullName: data.name, onboardingToken: data.onboardingToken });
-        router.push("/(auth)/register/onboarding");
+      if (data.status === 'NEEDS_GOOGLE_OTP') {
+        setSignupData({ fullName: data.name, onboardingToken: data.onboardingToken, otpExpiresAt: data.otpExpiresAt, signupMethod: 'google' });
+        router.push("/(auth)/register/verify-email");
       } else {
         throw new Error("Invalid server response");
       }

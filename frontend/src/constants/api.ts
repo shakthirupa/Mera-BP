@@ -12,6 +12,7 @@ export const API = {
   LOGIN_PHONE:             `${BASE_URL}/auth/login/phone`,
   GOOGLE:                  `${BASE_URL}/auth/google`,
   GOOGLE_CODE:             `${BASE_URL}/auth/google/code`,
+  GOOGLE_VERIFY_OTP:       `${BASE_URL}/auth/google/verify-otp`,
   GOOGLE_COMPLETE:         `${BASE_URL}/auth/google/complete`,
   REFRESH:                 `${BASE_URL}/auth/refresh`,
   LOGOUT:                  `${BASE_URL}/auth/logout`,

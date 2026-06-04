@@ -3,7 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from 'rea
 import { logout as apiLogout, getProfile, tryRefreshToken } from '../services/api';
 import { cancelAllReminders, scheduleAllReminders } from '../services/notifications';
 import { signOutFromGoogle } from '../services/google';
-import { clearTokens, getAccessToken, getRefreshToken, saveTokens } from '../services/tokenStorage';
+import { clearTokens, clearName, getAccessToken, getName, getRefreshToken, saveTokens, saveName } from '../services/tokenStorage';
 import type { PatientProfile } from '../types/index';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -54,25 +54,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (accessToken) {
         try {
-          // Validate token by fetching profile — if expired this throws
           const profile = await getProfile();
-          setUser(profile);
+          const cachedName = await getName();
+          setUser({ ...profile, name: cachedName ?? '' });
           setState('authenticated');
           return;
         } catch (e){
-          // Access token expired — fall through to refresh
           console.log("acess" + e)
         }
       }
 
-      // No access token or it expired — try silent refresh
       const refreshToken = await getRefreshToken();
       if (refreshToken) {
         const refreshed = await tryRefreshToken();
         if (refreshed) {
           try {
             const profile = await getProfile();
-            setUser(profile);
+            const cachedName = await getName();
+            setUser({ ...profile, name: cachedName ?? '' });
             setState('authenticated');
             return;
           } catch {
@@ -101,11 +100,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   await saveTokens(accessToken, refreshToken);
 
   if (profile) {
+    if (profile.name) await saveName(profile.name);
     setUser(profile);
   } else {
     try {
       const fetched = await getProfile();
-      setUser(fetched);
+      const cachedName = await getName();
+      setUser({ ...fetched, name: cachedName ?? '' });
     } catch (e) {
       console.log("profile error", e);
     }
@@ -127,6 +128,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // ignore — account may already be deleted
     } finally {
       await clearTokens();
+      await clearName();
       setUser(null);
       setState('unauthenticated');
       router.replace('/(auth)');
@@ -140,7 +142,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const refreshed = await tryRefreshToken();
       if (refreshed) {
         const profile = await getProfile();
-        setUser(profile);
+        const cachedName = await getName();
+        setUser({ ...profile, name: cachedName ?? '' });
         setState('authenticated');
         return true;
       }

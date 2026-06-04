@@ -24,6 +24,7 @@ import {
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { useAuth } from "../../src/providers/AuthContext";
 import { loginWithEmail, loginWithPhone } from "../../src/services/api";
+import { saveName } from "../../src/services/tokenStorage";
 
 const { height } = Dimensions.get('window');
 
@@ -59,7 +60,7 @@ export default function LoginScreen() {
             if (data.accessToken && data.refreshToken) {
               if (data.name && data.email) await saveAccount({ name: data.name, email: data.email });
               await signIn(data.accessToken, data.refreshToken);
-            } else if (data.onboardingToken) {
+            } else if (data.status === 'NEEDS_ONBOARDING' && data.onboardingToken) {
               resetSignup();
               setSignupData({ fullName: data.name, onboardingToken: data.onboardingToken });
               router.push('/(auth)/register/onboarding');
@@ -98,6 +99,7 @@ export default function LoginScreen() {
         : await loginWithEmail(body);
 
       if (data.accessToken && data.refreshToken) {
+        if (data.name) await saveName(data.name);
         const profile = data.name ? {
           name: data.name,
           email: data.email,
@@ -144,11 +146,10 @@ export default function LoginScreen() {
       if (data.accessToken && data.refreshToken) {
         if (data.name && data.email) await saveAccount({ name: data.name, email: data.email });
         await signIn(data.accessToken, data.refreshToken);
-      } else if (data.onboardingToken) {
-        // No account found — on login page show error instead of going to signup
-        Alert.alert('No Account Found', 'No account exists for this Google account. Please sign up first.', [
-          { text: 'Sign Up', onPress: () => router.replace('/(auth)/register') }
-        ]);
+      } else if (data.status === 'NEEDS_ONBOARDING' && data.onboardingToken) {
+        resetSignup();
+        setSignupData({ fullName: data.name, onboardingToken: data.onboardingToken });
+        router.push('/(auth)/register/onboarding');
       } else {
         throw new Error('Invalid server response');
       }

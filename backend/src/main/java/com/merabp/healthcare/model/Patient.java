@@ -22,9 +22,6 @@ public class Patient {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 100)
-    private String name;
-
     @Column(name = "date_of_birth", nullable = false)
     private LocalDate dateOfBirth;
 
@@ -69,14 +66,12 @@ public class Patient {
     protected Patient() {}
 
     // ── Email/password registration constructor ────────────────────────────────
-    public static Patient emailUser(String name,
-                                    LocalDate dob,
+    public static Patient emailUser(LocalDate dob,
                                     Gender gender,
                                     String email,
                                     String passwordHash) {
 
         Patient p = new Patient();
-        p.name = name;
         p.dateOfBirth = dob;
         p.gender = gender;
         p.email = email;
@@ -86,14 +81,12 @@ public class Patient {
         return p;
     }
 
-    public static Patient googleUser(String name,
-                                     LocalDate dob,
+    public static Patient googleUser(LocalDate dob,
                                      Gender gender,
                                      String email,
                                      String googleId) {
 
         Patient p = new Patient();
-        p.name = name;
         p.dateOfBirth = dob;
         p.gender = gender;
         p.email = email;
@@ -103,13 +96,11 @@ public class Patient {
         return p;
     }
 
-    public static Patient phoneUser(String name,
-                                    LocalDate dob,
+    public static Patient phoneUser(LocalDate dob,
                                     Gender gender,
                                     String phone) {
 
         Patient p = new Patient();
-        p.name = name;
         p.dateOfBirth = dob;
         p.gender = gender;
         p.phone = phone;
@@ -119,10 +110,8 @@ public class Patient {
     }
 
     // ── Google registration constructor ───────────────────────────────────────
-    // Google already verified the email so emailVerified = true immediately
-    public Patient(String name, LocalDate dateOfBirth, Gender gender,
+    public Patient(LocalDate dateOfBirth, Gender gender,
                    String email, String googleId) {
-        this.name          = name;
         this.dateOfBirth   = dateOfBirth;
         this.gender        = gender;
         this.email         = email;
@@ -132,7 +121,6 @@ public class Patient {
 
     // ── Getters ───────────────────────────────────────────────────────────────
     public Long getId()                          { return id; }
-    public String getName()                      { return name; }
     public LocalDate getDateOfBirth()            { return dateOfBirth; }
     public Gender getGender()                    { return gender; }
     public String getEmail()                     { return email; }
@@ -146,7 +134,6 @@ public class Patient {
     public boolean isDeleted()                   { return deleted; }
 
     // ── Setters ───────────────────────────────────────────────────────────────
-    public void setName(String name)                          { this.name = name; }
     public void setDateOfBirth(LocalDate dob)                 { this.dateOfBirth = dob; }
     public void setGender(Gender gender)                      { this.gender = gender; }
     public void setEmail(String email)                        { this.email = email; }
