@@ -53,9 +53,21 @@ public class ChatService {
             var resource    = new ClassPathResource("hypertension_dataset_clean.json");
             var inputStream = resource.getInputStream();
             var reader      = new java.io.InputStreamReader(inputStream, java.nio.charset.StandardCharsets.UTF_8);
-            List<Map<String, String>> raw = mapper.readValue(reader, new TypeReference<>() {});
+            List<Map<String, Object>> raw = mapper.readValue(reader, new TypeReference<>() {});
             dataset = raw.stream()
-                .map(m -> new QA(m.get("instruction"), m.get("response")))
+                .map(m -> {
+                    // Support both formats: messages[] and instruction/response
+                    if (m.containsKey("messages")) {
+                        @SuppressWarnings("unchecked")
+                        List<Map<String, String>> msgs = (List<Map<String, String>>) m.get("messages");
+                        String instr = msgs.stream().filter(msg -> "user".equals(msg.get("role")))
+                            .map(msg -> msg.get("content")).findFirst().orElse(null);
+                        String resp  = msgs.stream().filter(msg -> "assistant".equals(msg.get("role")))
+                            .map(msg -> msg.get("content")).findFirst().orElse(null);
+                        return new QA(instr, resp);
+                    }
+                    return new QA((String) m.get("instruction"), (String) m.get("response"));
+                })
                 .filter(qa -> qa.instruction() != null && qa.response() != null)
                 .collect(Collectors.toList());
             System.out.println("[ChatService] Loaded " + dataset.size() + " Q&As");
@@ -127,9 +139,8 @@ public class ChatService {
         }
 
         StringBuilder ctx = new StringBuilder();
-        ctx.append("Patient: ").append(patient.getName());
-        if (patient.getDateOfBirth() != null) ctx.append(", DOB: ").append(patient.getDateOfBirth());
-        if (patient.getGender()      != null) ctx.append(", Gender: ").append(patient.getGender());
+        ctx.append("Patient DOB: ").append(patient.getDateOfBirth());
+        if (patient.getGender() != null) ctx.append(", Gender: ").append(patient.getGender());
         ctx.append(".\n");
 
         Long pid = patient.getId();
@@ -195,9 +206,14 @@ public class ChatService {
     }
 
     private String callLocalModel(String message, String patientContext) throws Exception {
+        // Trim context to keep prompt short and inference fast
+        String trimmedContext = patientContext.length() > 600
+            ? patientContext.substring(0, 600)
+            : patientContext;
+
         Map<String, String> body = new LinkedHashMap<>();
         body.put("message", message);
-        body.put("patient_context", patientContext);
+        body.put("patient_context", trimmedContext);
 
         String requestBody = mapper.writeValueAsString(body);
 
