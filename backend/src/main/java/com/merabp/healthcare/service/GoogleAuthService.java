@@ -203,17 +203,21 @@ public class GoogleAuthService {
         String email    = jwtService.extractEmail(token);
         String name     = jwtService.extractName(token);
 
-        // Idempotency guard — if /complete is called twice, don't create a duplicate
-        if (patientRepo.findByGoogleIdAndDeletedFalse(googleId).isPresent()) {
-            throw new BusinessRuleException(
-                    "Account already exists. Please log in.");
+        // Idempotency guard — if /complete is called twice, return JWT instead of error
+        Optional<Patient> existingByGoogleId = patientRepo.findByGoogleIdAndDeletedFalse(googleId);
+        if (existingByGoogleId.isPresent()) {
+            return issueTokenPair("Login successful.", existingByGoogleId.get());
         }
 
-        // Also guard email — race condition where email was registered between
-        // /auth/google and /auth/google/complete
-        if (patientRepo.findByEmailAndDeletedFalse(email).isPresent()) {
-            throw new BusinessRuleException(
-                    "An account with this email already exists. Please log in.");
+        // Email already registered — link Google and login instead of throwing
+        Optional<Patient> existingByEmail = patientRepo.findByEmailAndDeletedFalse(email);
+        if (existingByEmail.isPresent()) {
+            Patient patient = existingByEmail.get();
+            patient.setGoogleId(googleId);
+            patient.setAuthProvider(
+                    patient.getAuthProvider() == AuthProvider.EMAIL
+                            ? AuthProvider.BOTH : patient.getAuthProvider());
+            return issueTokenPair("Google account linked. Login successful.", patient);
         }
 
         Patient patient = Patient.googleUser(
