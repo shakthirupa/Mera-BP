@@ -125,21 +125,26 @@ public class GoogleAuthService {
         String email    = payload.getEmail();
         String name     = (String) payload.get("name");
 
-        // Generate onboarding token carrying googleId + email + name
-        // Used after OTP verification to identify the user without re-verifying Google token
-        String pendingToken = jwtService.generateOnboardingToken(googleId, email, name);
+        // Existing Google user — straight sign in
+        Optional<Patient> byGoogleId = patientRepo.findByGoogleIdAndDeletedFalse(googleId);
+        if (byGoogleId.isPresent()) {
+            return issueTokenPair("Login successful.", byGoogleId.get());
+        }
 
-        // Send OTP to the Gmail address regardless of new/existing user
-        java.time.LocalDateTime expiresAt = otpService.generateAndSendOtp(email, OtpPurpose.GOOGLE_AUTH);
+        // Email already registered via email/password — link Google and login
+        Optional<Patient> byEmail = patientRepo.findByEmailAndDeletedFalse(email);
+        if (byEmail.isPresent()) {
+            Patient patient = byEmail.get();
+            patient.setGoogleId(googleId);
+            patient.setAuthProvider(
+                    patient.getAuthProvider() == AuthProvider.EMAIL
+                            ? AuthProvider.BOTH : patient.getAuthProvider());
+            return issueTokenPair("Google account linked. Login successful.", patient);
+        }
 
-        // Return pending token + expiry — frontend will verify OTP then call /google/verify-otp
-        AuthResponseDTO dto = new AuthResponseDTO();
-        dto.setStatus("NEEDS_GOOGLE_OTP");
-        dto.setMessage("OTP sent to your Gmail. Please verify.");
-        dto.setOnboardingToken(pendingToken);
-        dto.setOtpExpiresAt(expiresAt);
-        dto.setName(name);
-        return dto;
+        // New user — return onboarding token for DOB/gender/T&C screens
+        String onboardingToken = jwtService.generateOnboardingToken(googleId, email, name);
+        return AuthResponseDTO.onboarding(onboardingToken, name);
     }
 
     // ── STEP 1b — Verify Google OTP ───────────────────────────────────────────
