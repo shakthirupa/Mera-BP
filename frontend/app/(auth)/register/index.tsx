@@ -3,6 +3,7 @@ import { COLORS } from "@/src/constants/theme";
 import { useSignup } from "@/src/context/SignupContext";
 import { useAuth } from "@/src/providers/AuthContext";
 import { googleAuth, getGoogleAuthResult, googleAuthRedirect } from "@/src/services/google";
+import { saveName } from "@/src/services/tokenStorage";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useState, useEffect } from "react";
@@ -173,11 +174,18 @@ export default function RegisterScreen() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Google signup failed");
 
-      if (data.status === 'NEEDS_GOOGLE_OTP') {
-        setSignupData({ fullName: data.name, onboardingToken: data.onboardingToken, otpExpiresAt: data.otpExpiresAt, signupMethod: 'google' });
-        router.push("/(auth)/register/verify-email");
+      if (data.accessToken && data.refreshToken) {
+        // Existing user — sign in directly
+        if (data.name) await saveName(data.name);
+        Alert.alert('Account Already Exists', 'You already have an account. Logging you in.', [
+          { text: 'OK', onPress: () => signIn(data.accessToken!, data.refreshToken!) }
+        ]);
+      } else if (data.status === 'NEEDS_ONBOARDING' && data.onboardingToken) {
+        resetSignup();
+        setSignupData({ fullName: data.name, onboardingToken: data.onboardingToken });
+        router.push('/(auth)/register/onboarding');
       } else {
-        throw new Error("Invalid server response");
+        throw new Error('Invalid server response');
       }
     } catch (error: any) {
       Alert.alert("Google Authentication Failed", error.message);
